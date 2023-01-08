@@ -70,7 +70,7 @@ public:
     /*
     * Get the PID control command.
     */
-    double GetControllCommand();
+    double GetControlCommand();
   
     /*
     * Update the delta time.

@@ -44,6 +44,7 @@
 #include "planning_params.h"
 #include "utils.h"
 #include "pid_controller.h"
+#include "stanley_controller.h"
 
 #include <limits>
 #include <iostream>
@@ -111,12 +112,12 @@ void path_planner(
   ego_state.location.y = y_points[y_points.size()-1];
   ego_state.velocity.x = velocity;
 
-  if ( x_points.size() > 1 ) {
+  if (x_points.size() > 1) {
   	ego_state.rotation.yaw = angle_between_points(
       x_points[x_points.size()-2], y_points[y_points.size()-2], x_points[x_points.size()-1], y_points[y_points.size()-1]
     );
   	ego_state.velocity.x = v_points[v_points.size()-1];
-  	if(velocity < 0.01)
+  	if (velocity < 0.01)
   		ego_state.rotation.yaw = yaw;
   }
 
@@ -125,10 +126,10 @@ void path_planner(
   goal = behavior_planner.state_transition(ego_state, goal, is_junction, tl_state);
 
   if (behavior == STOPPED) {
-  	int max_points = 20;
+  	unsigned int max_points = 20;
   	double point_x = x_points[x_points.size()-1];
   	double point_y = y_points[x_points.size()-1];
-  	while( x_points.size() < max_points ){
+  	while (x_points.size() < max_points) {
   	  x_points.push_back(point_x);
   	  y_points.push_back(point_y);
   	  v_points.push_back(0);
@@ -144,12 +145,12 @@ void path_planner(
 
   State lead_car_state;  // = to the vehicle ahead...
 
-  if(spirals.size() == 0){
+  if (spirals.size() == 0) {
   	cout << "Error: No spirals generated " << endl;
   	return;
   }
 
-  for (int i = 0; i < spirals.size(); i++) {
+  for (unsigned int i = 0; i < spirals.size(); i++) {
 
     auto trajectory = motion_planner._velocity_profile_generator.generate_trajectory(
       spirals[i], desired_speed, ego_state, lead_car_state, behavior);
@@ -157,7 +158,7 @@ void path_planner(
     vector<double> spiral_x;
     vector<double> spiral_y;
     vector<double> spiral_v;
-    for (int j = 0; j < trajectory.size(); j++) {
+    for (unsigned int j = 0; j < trajectory.size(); j++) {
       double point_x = trajectory[j].path_point.x;
       double point_y = trajectory[j].path_point.y;
       double velocity = trajectory[j].v;
@@ -174,11 +175,11 @@ void path_planner(
   best_spirals = motion_planner.get_best_spiral_idx(spirals, obstacles, goal);
   int best_spiral_idx = -1;
 
-  if(best_spirals.size() > 0)
+  if (best_spirals.size() > 0)
   	best_spiral_idx = best_spirals[best_spirals.size()-1];
 
   int index = 0;
-  int max_points = 20;
+  unsigned int max_points = 20;
   int add_points = spirals_x[best_spiral_idx].size();
   while (x_points.size() < max_points && index < add_points) {
     double point_x = spirals_x[best_spiral_idx][index];
@@ -194,7 +195,7 @@ void path_planner(
 
 void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& obstacles, bool& obst_flag) {
 
-	for( int i = 0; i < x_points.size(); i++){
+	for (unsigned int i = 0; i < x_points.size(); i++) {
 		State obstacle;
 		obstacle.location.x = x_points[i];
 		obstacle.location.y = y_points[i];
@@ -225,26 +226,25 @@ int main ()
 
   /**
   * Step 1: Create and initialize lateral controller (steering controller)
-  **/
-  // Set initial state of the PID control internal integrator
-  double int_err_0 = 0.0;
+  **/  
   // Create PID controller instance for lateral control based on crosstrack error only
-  PID pid_steer = PID(int_err_0);
+  PID pid_steer = PID();
   // Initialize lateral PID controller
-  dobule FF_steer = 0.0;
+  double FF_steer = 0.0;
   double Kp_steer = 0.3;
   double Ki_steer = 0.001;
   double Kd_steer = 0.3;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
-  pid_steer.Init(FF_steer, Kp_steer, Ki_steer, Kd_steer, output_lim_max_steer, output_lim_min_steer);
+  double int_errot_0_steer = 0.0;
+  pid_steer.Init(FF_steer, Kp_steer, Ki_steer, Kd_steer, output_lim_max_steer, output_lim_min_steer, int_errot_0_steer);
 
-  // Define Stanley controller instance for lateral control based on both crosstrack and heading error
+  // Create Stanley controller instance as alternative for lateral control based on both crosstrack and heading error
   STANLEY stanley_steer = STANLEY();
   // Initialize lateral Stanley controller
   double K_crosstrack = 1.0;
   double velocity_threshold = 1e-3;
-  stanley_steer(K_crosstrack, velocity_threshold);
+  stanley_steer.Init(K_crosstrack, velocity_threshold, output_lim_max_steer, output_lim_min_steer);
 
   /**
   * Step 1: create pid (pid_throttle) for throttle command and initialize values
@@ -258,9 +258,10 @@ int main ()
   double Kd_throttle = 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
-  pid_throttle.Init(FF_throttle, Kp_throttle, Ki_throttle, Kd_throttle, output_lim_max_throttle, output_lim_min_throttle);
+  double int_error_0_throttle = 0.0;
+  pid_throttle.Init(FF_throttle, Kp_throttle, Ki_throttle, Kd_throttle, output_lim_max_throttle, output_lim_min_throttle, int_error_0_throttle);
 
-  h.onMessage([&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
+  h.onMessage([&pid_steer, &stanley_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
         auto s = hasData(data);
 
@@ -290,7 +291,7 @@ int main ()
           double y_position = data["location_y"];
           double z_position = data["location_z"];
 
-          if(!have_obst){
+          if (!have_obst) {
           	vector<double> x_obst = data["obst_x"];
           	vector<double> y_obst = data["obst_y"];
           	set_obst(x_obst, y_obst, obstacles, have_obst);
@@ -332,7 +333,7 @@ int main ()
           double heading_error = 0;
           double min_dist = 1.0e+12;  // Minimum distance of the current ego position to the planned trajectory segment
           double idx_min_dist = 0;  // Index for cross-track-error calculation
-          for (int idx=0; idx<x_points.size()-1; ++idx) {
+          for (unsigned int idx=0; idx<x_points.size()-1; ++idx) {
             // Ego vehicle position is to the left of the path => dist < 0
             // Ego vehicle is to the right of the path => dist > 0
             double dist = (
@@ -342,7 +343,7 @@ int main ()
               ) / sqrt(
                 pow(x_points[idx+1] - x_points[idx], 2) + pow(y_points[idx+1] - y_points[idx], 2)
               )
-            )
+            );
             if (abs(dist) < min_dist) {
               // Update minimum distance (absolute value)
               min_dist = abs(dist);
@@ -376,7 +377,7 @@ int main ()
 
           // Save lateral control data
           file_steer.seekg(std::ios::beg);
-          for(int j=0; j < i - 1; ++j) {
+          for (int j=0; j < i - 1; ++j) {
               file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
           }
           file_steer  << i ;
@@ -418,7 +419,7 @@ int main ()
 
           // Save longitudinal control data
           file_throttle.seekg(std::ios::beg);
-          for(int j=0; j < i - 1; ++j){
+          for (int j=0; j < i - 1; ++j) {
               file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
           }
           file_throttle  << i ;
@@ -482,6 +483,5 @@ int main ()
       cerr << "Failed to listen to port" << endl;
       return -1;
     }
-
 
 }

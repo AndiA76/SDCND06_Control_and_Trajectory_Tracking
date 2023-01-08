@@ -15,7 +15,7 @@ PID::PID() {}
 
 PID::~PID() {}
 
-void PID::Init(double FF, double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0 = 0.0) {
+void PID::Init(double FF, double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0) {
    /**
    * Initialize PID coefficients, initial state of the integrator and output limits.
    **/
@@ -75,7 +75,7 @@ void PID::UpdateError(double actual_error) {
    }
 }
 
-double PID::GetControllCommand() {
+double PID::GetControlCommand() {
    /**
    * Get the PID control command bound to the interval [output_lim_min_, output_lim_max_]
    */

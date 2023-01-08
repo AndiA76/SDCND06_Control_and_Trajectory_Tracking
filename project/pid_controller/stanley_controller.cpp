@@ -41,7 +41,7 @@ double STANLEY::GetSteerCommand(double heading_error, double crosstrack_error, d
    // Calculate Stanley control command
    double steer_control_output = heading_error + crosstrack_steer;
 
-   // Control output saturation
+   // Limit control output to its saturation limits
    if (steer_control_output < output_lim_min_) {
       // Set control output to its lower limit
       steer_control_output = output_lim_min_;
@@ -51,5 +51,5 @@ double STANLEY::GetSteerCommand(double heading_error, double crosstrack_error, d
    }
 
    // Return steer control comman
-   return steer_control_output
+   return steer_control_output;
 }
