@@ -8364,6 +8364,7 @@ CMakeFiles/pid_controller.dir/main.cpp.o: motion_planner.h
 CMakeFiles/pid_controller.dir/main.cpp.o: pid_controller.h
 CMakeFiles/pid_controller.dir/main.cpp.o: planning_params.h
 CMakeFiles/pid_controller.dir/main.cpp.o: spiral_base.h
+CMakeFiles/pid_controller.dir/main.cpp.o: stanley_controller.h
 CMakeFiles/pid_controller.dir/main.cpp.o: structs.h
 CMakeFiles/pid_controller.dir/main.cpp.o: utils.h
 CMakeFiles/pid_controller.dir/main.cpp.o: velocity_profile_generator.h
@@ -16967,6 +16968,9 @@ CMakeFiles/pid_controller.dir/spiral_base.cpp.o: rpclib/include/rpc/msgpack/zone
 
 CMakeFiles/pid_controller.dir/spiral_equations.cpp.o: spiral_equations.cpp
 CMakeFiles/pid_controller.dir/spiral_equations.cpp.o: spiral_equations.h
+
+CMakeFiles/pid_controller.dir/stanley_controller.cpp.o: stanley_controller.cpp
+CMakeFiles/pid_controller.dir/stanley_controller.cpp.o: stanley_controller.h
 
 CMakeFiles/pid_controller.dir/utils.cpp.o: structs.h
 CMakeFiles/pid_controller.dir/utils.cpp.o: utils.cpp

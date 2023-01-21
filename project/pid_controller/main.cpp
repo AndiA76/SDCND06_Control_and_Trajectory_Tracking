@@ -378,7 +378,7 @@ int main ()
               pow(x_points[idx_min_dist+1] - x_points[idx_min_dist], 2) +
               pow(y_points[idx_min_dist+1] + y_points[idx_min_dist], 2)
             )
-          )
+          );
           // Calculate yaw angle of the planned path segment at the waypoint closest to the current ego vehicle position
           double yaw_path = angle_between_points(
             x_points[idx_min_dist], y_points[idx_min_dist], x_points[idx_min_dist+1], y_points[idx_min_dist+1]

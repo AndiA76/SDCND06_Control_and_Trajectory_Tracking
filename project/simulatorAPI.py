@@ -893,7 +893,7 @@ def game_loop(args):
 
                 # Actual ego vehicle (player) front axle position in [m]
                 print(f'player wheel position : {world.player.wheel.position}')
-                print(f'Half-box extent in [m] : {self.player.bounding_box.extent}')             
+                print(f'Half-box extent in [m] : {world.player.bounding_box.extent}')             
 
                 # Send measurement and planner data via uWebSocket to pid controller executable
                 ws.send(
