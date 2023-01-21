@@ -26,10 +26,13 @@ string hasData(string s) {
 }
 
 
+// Calculate angle between two point vectors
 double angle_between_points(double x1, double y1, double x2, double y2){
 	return atan2(y2-y1, x2-x1);
 }
 
+
+// Path planner for next path segment
 void path_planning(vector<double>& x_points, vector<double>& y_points, double yaw, double gap, double radius, int max_points = 200){
 
 	while( x_points.size() < max_points){
@@ -38,7 +41,9 @@ void path_planning(vector<double>& x_points, vector<double>& y_points, double ya
 
 		if(radius != 0){
 			if(x_points.size() > 1){
-				yaw = angle_between_points(x_points[x_points.size()-2], y_points[y_points.size()-2], x_points[x_points.size()-1], y_points[y_points.size()-1]);
+				yaw = angle_between_points(
+					x_points[x_points.size()-2], y_points[y_points.size()-2], x_points[x_points.size()-1], y_points[y_points.size()-1]
+				);
 			}
 			double dt = gap / abs(radius);
 			double x = abs(radius) * cos(-pi()/2 + dt);
@@ -56,70 +61,64 @@ void path_planning(vector<double>& x_points, vector<double>& y_points, double ya
 	}
 }
 
+
 int main ()
 {
 	cout << "starting server" << endl;
 	uWS::Hub h;
 	
-		//sio.emit('path', {'trajectory': {'x': x_points, 'y': y_points}})
+	//sio.emit('path', {'trajectory': {'x': x_points, 'y': y_points}});
 
-	h.onMessage([](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
-	{
-		
-      	auto s = hasData(data);
-      	//cout << "string " << s << endl;
+	h.onMessage(
+		[](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
-      	if (s != "") {
-        	auto data = json::parse(s);
+			auto s = hasData(data);
+      		//cout << "string " << s << endl;
 
-        	vector<double> x_points = data["way_points_x"];
-        	vector<double> y_points = data["way_points_y"];
-        	double yaw = data["yaw"];
-        	double sim_time = data["time"];
+      		if (s != "") {
+        		auto data = json::parse(s);
 
-        	if( (int)(sim_time/2)%2 == 0){
-        		path_planning(x_points, y_points, yaw, 0.15, -200);
-        	}
-        	else{
+        		vector<double> x_points = data["way_points_x"];
+        		vector<double> y_points = data["way_points_y"];
+        		double yaw = data["yaw"];
+        		double sim_time = data["time"];
+
+        		if( (int)(sim_time/2)%2 == 0) {
+        			path_planning(x_points, y_points, yaw, 0.15, -200);
+        		} else {
         		path_planning(x_points, y_points, yaw, 0.15, 70);
-        	}
+        		}
 
-			json msgJson;
-      		msgJson["trajectory_x"] = x_points;
-        	msgJson["trajectory_y"] = y_points;
+				json msgJson;
+      			msgJson["trajectory_x"] = x_points;
+        		msgJson["trajectory_y"] = y_points;
 
-        	auto msg = msgJson.dump();
-	
-			ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);	
-			
+        		auto msg = msgJson.dump();
+
+				ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+			}
 		}
+	);
 
-	});
-	
-	
-	h.onConnection([](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) 
-	{
-    	cout << "Connected!!!" << endl;
-  	});
+	h.onConnection(
+		[](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
+			cout << "Connected!!!" << endl;
+  		}
+	);
 
-	
-  	h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length) 
-  	{
-    	ws.close();
-    	cout << "Disconnected" << endl;
-  	});
+  	h.onDisconnection(
+		[&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length) {
+			ws.close();
+    		cout << "Disconnected" << endl;
+  		}
+	);
 
   	int port = 4567;
-  	if (h.listen("0.0.0.0", port))
-  	{
+  	if (h.listen("0.0.0.0", port)) {
     	cout << "Listening to port " << port << endl;
     	h.run();
-  	} 
-  	else 
-  	{
+  	} else {
     	cerr << "Failed to listen to port" << endl;
     	return -1;
   	}
-  	
-
 }

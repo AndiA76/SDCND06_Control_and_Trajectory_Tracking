@@ -6,12 +6,13 @@
 # This work is licensed under the terms of the MIT license.
 # For a copy, see <https://opensource.org/licenses/MIT>.
 
-#/**********************************************
+# **********************************************
 # * Self-Driving Car Nano-degree - Udacity
 # *  Created on: September 20, 2020
 # *      Author: Munir Jojo-Verge
-#                Aaron Brown
-# **********************************************/
+# *              Aaron Brown
+# * Modified by: Andreas Albrecht
+# **********************************************
 
 
 # New version from Mathilde Badoual
@@ -35,10 +36,12 @@ import sys
 import math
 
 try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
+    sys.path.append(
+        glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
         sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0]
+    )
 except IndexError:
     pass
 
@@ -83,12 +86,12 @@ _update_point_thresh = 16
 _prev_yaw = 0
 _pivot = carla.Transform()
 
-# keep track of how level the ground is for teleportation
+# Keep track of how level the ground is for teleportation
 _road_height = 0
 _road_pitch = 0
 _road_roll = 0
 
-# orbital camera
+# Orbital camera
 _view_radius = 10
 _view_radius_change = 0
 _view_yaw = 0
@@ -96,6 +99,10 @@ _view_yaw_change = 0
 _view_pitch = 0
 _view_pitch_change = 0
 
+# Ego vehicle wheel base (distance between front and rear axle) in [m]
+ego_wheel_base = 0
+
+# Create websocket connection
 ws=create_connection("ws://localhost:4567")
 
 try:
@@ -118,6 +125,7 @@ except ImportError:
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
 # ==============================================================================
+
 
 def get_actor_display_name(actor, truncate=250):
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
@@ -159,7 +167,7 @@ class World(object):
 
     def get_waypoint(self, pos_x, pos_y):
         global _prev_junction_id, _tl_state, _road_height, _road_pitch, _road_roll
-        position = carla.Location(x= pos_x, y= pos_y)
+        position = carla.Location(x=pos_x, y=pos_y)
         waypoint = self.map.get_waypoint(position, project_to_road=True, lane_type=(carla.LaneType.Driving))
         _road_height = waypoint.transform.location.z
         _road_pitch = waypoint.transform.rotation.pitch
@@ -176,12 +184,11 @@ class World(object):
                     traffic_light.set_state(carla.TrafficLightState.Green)
                     traffic_light.set_green_time(4.0)
 
-
                 _tl_state = str(carla.TrafficLightState.Green)
 
             return point.x, point.y, waypoint.transform.rotation.yaw * math.pi/180, False
 
-        waypoint = waypoint.next(distance_lookahead(magnitude(self.player.get_velocity() ), magnitude(self.player.get_acceleration() ) ))[0]
+        waypoint = waypoint.next(distance_lookahead(magnitude(self.player.get_velocity()), magnitude(self.player.get_acceleration())))[0]
         point = waypoint.transform.location
 
         not_junction = [475, 1168, 82, 1932]
@@ -202,7 +209,8 @@ class World(object):
         return point.x, point.y, waypoint.transform.rotation.yaw * math.pi/180, is_goal_junction
 
     def move(self, sim_time, res=1):
-        global way_points, v_points, last_move_time, velocity, _prev_yaw, _view_yaw, _view_pitch, _view_radius, _pivot, steer, throttle, forward_speed
+        global way_points, v_points, last_move_time, velocity, _prev_yaw, _view_yaw, \
+            _view_pitch, _view_radius, _pivot, steer, throttle, forward_speed
         previous_index = 0
         start = carla.Transform()
         end = carla.Transform()
@@ -233,7 +241,6 @@ class World(object):
 #                 self.world.debug.draw_line(start.location, end.location, 0.1, color, .1)
 #                 previous_index = index
 
-
 #         # draw path
 #         previous_index = 0
 #         for index in range(res, len(way_points), res):
@@ -260,12 +267,16 @@ class World(object):
                 else:
                     _prev_yaw = yaw
                     D = velocity * delta_t
-                    d_interval = math.sqrt( (way_points[1].location.x - way_points[0].location.x )**2 + (way_points[1].location.y - way_points[0].location.y )**2  )
+                    d_interval = math.sqrt(
+                        (way_points[1].location.x - way_points[0].location.x)**2 + (way_points[1].location.y - way_points[0].location.y)**2
+                    )
                     while d_interval < D and len(way_points) > 2:
                         D -= d_interval
                         way_points.pop(0)
                         v_points.pop(0)
-                        d_interval = math.sqrt( (way_points[1].location.x - way_points[0].location.x )**2 + (way_points[1].location.y - way_points[0].location.y )**2  )
+                        d_interval = math.sqrt(
+                            (way_points[1].location.x - way_points[0].location.x)**2 + (way_points[1].location.y - way_points[0].location.y)**2
+                        )
                     if abs(d_interval) < 1e-6:
                         yaw = 0.
                     else:
@@ -275,12 +286,10 @@ class World(object):
                         way_points[0].location.y = ratio * (way_points[1].location.y - way_points[0].location.y) + way_points[0].location.y
                         yaw = math.atan2(way_points[1].location.y-way_points[0].location.y, way_points[1].location.x-way_points[0].location.x)
 
-
                 way_points[0].rotation.yaw = yaw * 180 / math.pi
                 way_points[0].rotation.pitch = _road_pitch
                 way_points[0].rotation.roll = _road_roll
                 way_points[0].location.z = _road_height
-
 
                 _pivot = carla.Transform()
                 _pivot.location = self.player.get_transform().location
@@ -302,7 +311,7 @@ class World(object):
                 _pivot.rotation.pitch  = _view_pitch * 180 / math.pi
                 _pivot.location.z += 2 + _view_radius * math.sin(math.pi + _view_pitch)
                 # Teleports the actor to a given transform (location and rotation):
-#                 self.player.set_transform(way_points[0])
+                #self.player.set_transform(way_points[0])
                 self.player.apply_control(carla.VehicleControl(throttle=throttle, steer=steer, brake=brake))
 
 
@@ -350,6 +359,19 @@ class World(object):
             '''
             self.actor = self.world.try_spawn_actor(blueprint, actor_spawn)
             '''
+
+        # Get initial pose of the spawned ego vehicle (player) and its bounding box dimensions
+        print('\n###')
+        print(f'Initial ego vehicle position in [m]     : {self.bounding_box.location}')
+        print(f'Initial ego vehicle orientation in [deg]: {self.bounding_box.rotation}')
+        print(f'Half-box extent in [m]                  : {self.player.bounding_box.extent}')
+        print('Overall ego vehicle dimensions in [m]:')
+        print(f'Length in [m]: {2 * self.player.bounding_box.extent.x}')
+        print(f'Width in [m]: {2 * self.player.bounding_box.extent.y}')
+        print(f'Height in [m]: {2 * self.player.bounding_box.extent.z}')
+        print('\n###')
+        print(f'Wheel position in [m]: {self.player.wheel.position}')
+        print('\n###')
 
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
@@ -650,11 +672,15 @@ class CameraManager(object):
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         Attachment = carla.AttachmentType
         self._camera_transforms = [
-            carla.Transform(carla.Location(x=-9.5+parent_actor.get_transform().location.x, y= parent_actor.get_transform().location.y, z=3.5), carla.Rotation(pitch=8.0, yaw= parent_actor.get_transform().rotation.yaw)),
+            carla.Transform(
+                carla.Location(x=-9.5+parent_actor.get_transform().location.x, y=parent_actor.get_transform().location.y, z=3.5),
+                carla.Rotation(pitch=8.0, yaw=parent_actor.get_transform().rotation.yaw)
+            ),
             (carla.Transform(carla.Location(x=1.6, z=1.7)), Attachment.SpringArm),
             (carla.Transform(carla.Location(x=5.5, y=1.5, z=1.5)), Attachment.SpringArm),
             (carla.Transform(carla.Location(x=-8.0, z=6.0), carla.Rotation(pitch=6.0)), Attachment.SpringArm),
-            (carla.Transform(carla.Location(x=-1, y=-bound_y, z=0.5)), Attachment.SpringArm)]
+            (carla.Transform(carla.Location(x=-1, y=-bound_y, z=0.5)), Attachment.SpringArm)
+        ]
         self.transform_index = 1
         self.sensors = [
             ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}],
@@ -662,7 +688,8 @@ class CameraManager(object):
                 {'lens_circle_multiplier': '3.0',
                 'lens_circle_falloff': '3.0',
                 'chromatic_aberration_intensity': '0.5',
-                'chromatic_aberration_offset': '0'}]]
+                'chromatic_aberration_offset': '0'}]
+        ]
         world = self._parent.get_world()
         bp_library = world.get_blueprint_library()
         for item in self.sensors:
@@ -773,7 +800,7 @@ def SpawnNPC(client, world, args, offset_x, offset_y):
     global obst_x, obst_y
     SpawnActor = carla.command.SpawnActor
     blueprint = client.get_world().get_blueprint_library().filter(args.filter)[5]
-    actor_spawn =  carla.Transform()
+    actor_spawn = carla.Transform()
     spawn_point = world.map.get_spawn_points()[1]
     actor_spawn.location = spawn_point.location
     actor_spawn.rotation = spawn_point.rotation
@@ -781,7 +808,6 @@ def SpawnNPC(client, world, args, offset_x, offset_y):
     actor_spawn.location.y += offset_y * spawn_point.get_right_vector().y
     obst_x.append(actor_spawn.location.x)
     obst_y.append(actor_spawn.location.y)
-
 
     return SpawnActor(blueprint, actor_spawn)
 
@@ -837,28 +863,61 @@ def game_loop(args):
                 way_points.append(player)
                 v_points.append(0)
 
-
             sim_time = world.hud.simulation_time - start_time
 
+            # Send message with planned and actual waypoints if the current path segment is complete
             if update_cycle and (len(way_points) < _update_point_thresh):
 
                 update_cycle = False
                 # print("sending data")
 
+                # Planned trajectory points
                 x_points = [point.location.x for point in way_points]
                 y_points = [point.location.y for point in way_points]
+                # Actual yaw angle of the ego vehicle (player) in [rad]
                 yaw = way_points[0].rotation.yaw * math.pi / 180
+                print(f'ego yaw angle sent: {velocity} rad')
+                # Get current waypoint from the actual ego vehicle trajectory in [m]
                 waypoint_x, waypoint_y, waypoint_t, waypoint_j = world.get_waypoint(x_points[-1], y_points[-1])
+                # Actual velocity vector of the ego vehicle (player) in [m/s]
                 real_v = world.player.get_velocity()
                 velocity = math.sqrt(real_v.x**2 + real_v.y**2)
-                print('velocity sent: ', velocity)
+                print(f'ego velocity sent: {velocity} m/s')
 
+                # Actual ego vehicle (player) position (location) in [m]
                 t = world.player.get_transform()
                 location_x = t.location.x
                 location_y = t.location.y
                 location_z = t.location.z
+                print(f'ego position sent: [{location_x}, {location_y}, {location_z}] m')
 
-                ws.send(json.dumps({'traj_x': x_points, 'traj_y': y_points, 'traj_v': v_points ,'yaw': _prev_yaw, "velocity": velocity, 'time': sim_time, 'waypoint_x': waypoint_x, 'waypoint_y': waypoint_y, 'waypoint_t': waypoint_t, 'waypoint_j': waypoint_j, 'tl_state': _tl_state, 'obst_x': obst_x, 'obst_y': obst_y, 'location_x': location_x, 'location_y': location_y, 'location_z': location_z } ))
+                # Actual ego vehicle (player) front axle position in [m]
+                print(f'player wheel position : {world.player.wheel.position}')
+                print(f'Half-box extent in [m] : {self.player.bounding_box.extent}')             
+
+                # Send measurement and planner data via uWebSocket to pid controller executable
+                ws.send(
+                    json.dumps(
+                        {
+                            'traj_x': x_points,
+                            'traj_y': y_points,
+                            'traj_v': v_points,
+                            'yaw': _prev_yaw,
+                            "velocity": velocity,
+                            'time': sim_time,
+                            'waypoint_x': waypoint_x,
+                            'waypoint_y': waypoint_y,
+                            'waypoint_t': waypoint_t,
+                            'waypoint_j': waypoint_j,
+                            'tl_state': _tl_state,
+                            'obst_x': obst_x,
+                            'obst_y': obst_y,
+                            'location_x': location_x,
+                            'location_y': location_y,
+                            'location_z': location_z
+                        }
+                    )
+                )
 
             clock.tick_busy_loop(60)
             world.tick(clock)
@@ -888,7 +947,8 @@ def game_loop(args):
 
 
 def get_data():
-    global way_points, v_points, update_cycle, spirals_x, spirals_y, spirals_v, spiral_idx, _active_maneuver, steer, throttle, brake
+    global way_points, v_points, update_cycle, spirals_x, spirals_y, spirals_v, \
+        spiral_idx, _active_maneuver, steer, throttle, brake
     data = ws.recv() # blocking call, thats why we use asyncio
     data = json.loads(str(data))
     dist_thresh = 0.1

@@ -44,9 +44,6 @@ void PID::UpdateError(double actual_error) {
    prev_error_ = curr_error_;
    curr_error_ = actual_error;
 
-   // Calculate proportional error
-   prop_error_ = curr_error_;
-
    // Calculate differential error (prevent division by zero)
    if (delta_t_ < delta_t_min_){
       diff_error_ = (curr_error_ - prev_error_) / delta_t_min_;
@@ -54,18 +51,18 @@ void PID::UpdateError(double actual_error) {
       diff_error_ = (curr_error_ - prev_error_) / delta_t_;
    }
 
-   // Predict integratal error using trapezoidal rule
+   // Predict integratal error using trapezoidal rule (before saturation)
    double pred_int_error = int_error_ + delta_t_/2 * (prev_error_ + curr_error_);
 
-   // Predict PID control output
-   double pred_control_output = FF_ + Kp_ * prop_error_ + Ki_ * pred_int_error + Kd_ * diff_error_;
+   // Predict PID control output (before saturation)
+   double pred_control_output = FF_ + Kp_ * curr_error_ + Ki_ * pred_int_error + Kd_ * diff_error_;
 
-   // Anti-windup for integral part
+   // Anti-windup for integral part: Stop integration if control output saturates
    if (pred_control_output < output_lim_min_) {
-      // Set PID control output to its lower limit and stop integration (don't update int_error_)
+      // Clamp PID control output to its lower limit and stop integration (don't update int_error_)
       control_output_ = output_lim_min_;
    } else if (pred_control_output > output_lim_max_) {
-      // Set PID control output to its upper limit and stop integration (don't update int_error_)
+      // Clamp PID control output to its upper limit and stop integration (don't update int_error_)
       control_output_ = output_lim_max_;
    } else {
       // Update integral error and continue integration
@@ -79,7 +76,6 @@ double PID::GetControlCommand() {
    /**
    * Get the PID control command bound to the interval [output_lim_min_, output_lim_max_]
    */
-   // Return PID control command
    return control_output_;
 }
 
@@ -87,6 +83,5 @@ void PID::UpdateDeltaTime(double new_delta_time) {
    /**
    * Update the delta time with a new value
    */
-   // Update time difference
    delta_t_ = new_delta_time;
 }

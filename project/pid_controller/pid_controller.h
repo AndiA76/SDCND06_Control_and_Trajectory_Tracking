@@ -18,9 +18,8 @@ public:
     */
     double curr_error_;     // current error
     double prev_error_;     // previous error
-    double prop_error_;     // proporional part
-    double int_error_;      // integral part
-    double diff_error_;     // differential part
+    double int_error_;      // integral error
+    double diff_error_;     // differential error
 
     /*
     * Coefficients

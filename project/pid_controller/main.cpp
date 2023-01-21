@@ -261,52 +261,65 @@ int main ()
   double int_error_0_throttle = 0.0;
   pid_throttle.Init(FF_throttle, Kp_throttle, Ki_throttle, Kd_throttle, output_lim_max_throttle, output_lim_min_throttle, int_error_0_throttle);
 
+  // Execute control cycle on receiving a new message from SimulationAPI
   h.onMessage([&pid_steer, &stanley_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
+        // Check if current message has data
         auto s = hasData(data);
 
         if (s != "") {
 
+          // Parse data from current message
           auto data = json::parse(s);
 
-          // create file to save values
+          // Create file to save values
           fstream file_steer;
           file_steer.open("steer_pid_data.txt");
           fstream file_throttle;
           file_throttle.open("throttle_pid_data.txt");
 
+          // Planned trajectory points (interpolated waypoints)
           vector<double> x_points = data["traj_x"];
           vector<double> y_points = data["traj_y"];
           vector<double> v_points = data["traj_v"];
+          // Actual yaw angle of the ego vehicle pose
           double yaw = data["yaw"];
+          // Actual velocity of the ego vehicle
           double velocity = data["velocity"];
+          // Simulation time
           double sim_time = data["time"];
+          // Planned waypoints
           double waypoint_x = data["waypoint_x"];
           double waypoint_y = data["waypoint_y"];
           double waypoint_t = data["waypoint_t"];
           bool is_junction = data["waypoint_j"];
+          // Traffic light state
           string tl_state = data["tl_state"];
-
+          // Actual position of the ego vehicle (center point)
           double x_position = data["location_x"];
           double y_position = data["location_y"];
           double z_position = data["location_z"];
 
+          // Obstacle positions 
           if (!have_obst) {
           	vector<double> x_obst = data["obst_x"];
           	vector<double> y_obst = data["obst_y"];
           	set_obst(x_obst, y_obst, obstacles, have_obst);
           }
 
+          // Goal states derived from the planned waypoints
           State goal;
           goal.location.x = waypoint_x;
           goal.location.y = waypoint_y;
           goal.rotation.yaw = waypoint_t;
 
+          // Define vectors for spline interpolation of the planned trajectory given by the waypoints
           vector< vector<double> > spirals_x;
           vector< vector<double> > spirals_y;
           vector< vector<double> > spirals_v;
           vector<int> best_spirals;
 
+          // Path planning using spiral interpolation of the planned waypoints
           path_planner(x_points, y_points, v_points, yaw, velocity, goal, is_junction, tl_state, spirals_x, spirals_y, spirals_v, best_spirals);
 
           // Save time and compute delta time
@@ -327,32 +340,45 @@ int main ()
           // Update the delta time with the previous command
           pid_steer.UpdateDeltaTime(new_delta_time);
 
-          // Find closest waypoint on planned path segment to current ego vehicle position to calculate crosstrack_error and heading_error
-          // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+          // Calculate center point of the front axle position
+          double ego_wheel_base = 4.0;
+          double x_position_front = x_position + ego_wheel_base/2 * cos(yaw);
+          double y_position_front = y_position + ego_wheel_base/2 * sin(yaw);
+
+          // Find the point of the planned path segment closest to the front axle center position of the ego vehicle (player)
           double crosstrack_error = 0;
           double heading_error = 0;
-          double min_dist = 1.0e+12;  // Minimum distance of the current ego position to the planned trajectory segment
-          double idx_min_dist = 0;  // Index for cross-track-error calculation
-          for (unsigned int idx=0; idx<x_points.size()-1; ++idx) {
-            // Ego vehicle position is to the left of the path => dist < 0
-            // Ego vehicle is to the right of the path => dist > 0
-            double dist = (
-              (
-                (x_points[idx+1] - x_points[idx]) * (y_points[idx] - y_position) - 
-                (x_points[idx] - x_position) * (y_points[idx+1] - y_points[idx])
-              ) / sqrt(
-                pow(x_points[idx+1] - x_points[idx], 2) + pow(y_points[idx+1] - y_points[idx], 2)
-              )
+          double min_dist = DBL_MAX;  // Minimum distance of the planned path cto the ego vehicles front axle position
+          unsigned int idx_min_dist = 0;  // Index for cross-track-error calculation
+          for (unsigned int idx=0; idx<x_points.size()-1; ++idx) { // Leave out last element of the path segment from the search
+            // Calculate the distance of the current point on the planned path segment to the ego vehicle front axle position
+            double dist = sqrt(
+              pow(x_points[idx] - x_position_front, 2) + pow(y_points[idx] - y_position_front, 2)
             );
-            if (abs(dist) < min_dist) {
+            if (dist < min_dist) {
               // Update minimum distance (absolute value)
               min_dist = abs(dist);
-              // Update cross-track error (signed value)
-              crosstrack_error = dist;
               // Update index of the waypoint closest to the current ego vehicle position
               idx_min_dist = idx;
             }
           }
+
+          // Calculate crosstrack_error as the distance of the ego vehicle's front axle center position
+          // to the tangent through the closest point approximated and its successor on the planned
+          // trajectory segment.
+          // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+          // Ego vehicle front axle position is left of the path tangent => crosstrack_error < 0
+          // Ego vehicle front axle position is right of the path tangent => crosstrack_error > 0
+          // Ego vehicle front axcle position is on the path tangent => crosstrack_error == 0
+          crosstrack_error = (
+            (
+              (x_points[idx_min_dist+1] - x_points[idx_min_dist]) * (y_points[idx_min_dist] - y_position_front) -
+              (y_points[idx_min_dist+1] - y_points[idx_min_dist]) * (x_points[idx_min_dist] - x_position_front)
+            ) / sqrt(
+              pow(x_points[idx_min_dist+1] - x_points[idx_min_dist], 2) +
+              pow(y_points[idx_min_dist+1] + y_points[idx_min_dist], 2)
+            )
+          )
           // Calculate yaw angle of the planned path segment at the waypoint closest to the current ego vehicle position
           double yaw_path = angle_between_points(
             x_points[idx_min_dist], y_points[idx_min_dist], x_points[idx_min_dist+1], y_points[idx_min_dist+1]
