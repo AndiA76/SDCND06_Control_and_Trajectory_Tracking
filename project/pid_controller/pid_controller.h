@@ -7,6 +7,11 @@
 #ifndef PID_CONTROLLER_H
 #define PID_CONTROLLER_H
 
+#include <vector>
+
+using namespace std;
+
+
 class PID {
 public:
     /**
@@ -64,12 +69,17 @@ public:
     /*
     * Update the PID error variables given the actual error (e.g. cross-track or velocity error).
     */
-    void UpdateError(double actual_error);
+    void UpdateError(double actual_error, double feedforward_input);
 
     /*
     * Get the PID control command.
     */
     double GetControlCommand();
+
+    /*
+    * Get the PID control errors.
+    */
+    vector<double> GetErrors();
   
     /*
     * Update the delta time.

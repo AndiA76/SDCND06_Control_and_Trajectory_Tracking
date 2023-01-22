@@ -6,10 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/behavior_planner_FSM.cpp
-behavior_planner_FSM.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/behavior_planner_FSM.h
-
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/behavior_planner_FSM.h
 chrono
 -
@@ -31,10 +27,6 @@ structs.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
 utils.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.h
-
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/cost_functions.cpp
-cost_functions.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/cost_functions.h
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/cost_functions.h
 math.h
@@ -62,24 +54,6 @@ structs.h
 utils.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.h
 
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/cubic_spiral.cpp
-cubic_spiral.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/cubic_spiral.h
-algorithm
--
-glog/logging.h
--
-Eigen/Core
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/Eigen/Core
-Eigen/LU
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/Eigen/LU
-integral.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/integral.h
-spiral_equations.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_equations.h
-structs.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
-
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/cubic_spiral.h
 vector
 -
@@ -89,12 +63,6 @@ spiral_base.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_base.h
 structs.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
-
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/integral.h
-functional
--
-vector
--
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/json.hpp
 algorithm
@@ -240,10 +208,6 @@ cmath
 time.h
 -
 
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/motion_planner.cpp
-motion_planner.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/motion_planner.h
-
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/motion_planner.h
 math.h
 -
@@ -271,17 +235,11 @@ velocity_profile_generator.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.h
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/pid_controller.h
+vector
+-
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/planning_params.h
 array
--
-
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_base.cpp
-spiral_base.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_base.h
-cmath
--
-limits
 -
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_base.h
@@ -294,10 +252,6 @@ vector
 structs.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
 
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_equations.h
-array
--
-
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/stanley_controller.h
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
@@ -308,12 +262,6 @@ carla/geom/Location.h
 carla/geom/Rotation.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/carla/geom/Rotation.h
 
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.cpp
-utils.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.h
-cmath
--
-
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.h
 random
 -
@@ -323,18 +271,6 @@ carla/client/Client.h
 -
 structs.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
-
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.cpp
-velocity_profile_generator.h
-/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.h
-cfloat
--
-cmath
--
-cstdlib
--
-thread
--
 
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.h
 vector
@@ -740,34 +676,6 @@ eigen-3.3.7/Eigen/src/Jacobi/Jacobi.h
 src/Core/util/ReenableStupidWarnings.h
 eigen-3.3.7/Eigen/src/Core/util/ReenableStupidWarnings.h
 
-eigen-3.3.7/Eigen/LU
-Core
-eigen-3.3.7/Eigen/Core
-src/Core/util/DisableStupidWarnings.h
-eigen-3.3.7/Eigen/src/Core/util/DisableStupidWarnings.h
-src/misc/Kernel.h
-eigen-3.3.7/Eigen/src/misc/Kernel.h
-src/misc/Image.h
-eigen-3.3.7/Eigen/src/misc/Image.h
-src/LU/FullPivLU.h
-eigen-3.3.7/Eigen/src/LU/FullPivLU.h
-src/LU/PartialPivLU.h
-eigen-3.3.7/Eigen/src/LU/PartialPivLU.h
-mkl_lapacke.h
-eigen-3.3.7/Eigen/mkl_lapacke.h
-src/misc/lapacke.h
-eigen-3.3.7/Eigen/src/misc/lapacke.h
-src/LU/PartialPivLU_LAPACKE.h
-eigen-3.3.7/Eigen/src/LU/PartialPivLU_LAPACKE.h
-src/LU/Determinant.h
-eigen-3.3.7/Eigen/src/LU/Determinant.h
-src/LU/InverseImpl.h
-eigen-3.3.7/Eigen/src/LU/InverseImpl.h
-src/LU/arch/Inverse_SSE.h
-eigen-3.3.7/Eigen/src/LU/arch/Inverse_SSE.h
-src/Core/util/ReenableStupidWarnings.h
-eigen-3.3.7/Eigen/src/Core/util/ReenableStupidWarnings.h
-
 eigen-3.3.7/Eigen/QR
 Core
 eigen-3.3.7/Eigen/Core
@@ -1112,18 +1020,6 @@ eigen-3.3.7/Eigen/src/Householder/HouseholderSequence.h
 
 eigen-3.3.7/Eigen/src/Jacobi/Jacobi.h
 
-eigen-3.3.7/Eigen/src/LU/Determinant.h
-
-eigen-3.3.7/Eigen/src/LU/FullPivLU.h
-
-eigen-3.3.7/Eigen/src/LU/InverseImpl.h
-
-eigen-3.3.7/Eigen/src/LU/PartialPivLU.h
-
-eigen-3.3.7/Eigen/src/LU/PartialPivLU_LAPACKE.h
-
-eigen-3.3.7/Eigen/src/LU/arch/Inverse_SSE.h
-
 eigen-3.3.7/Eigen/src/QR/ColPivHouseholderQR.h
 
 eigen-3.3.7/Eigen/src/QR/ColPivHouseholderQR_LAPACKE.h
@@ -1135,10 +1031,6 @@ eigen-3.3.7/Eigen/src/QR/FullPivHouseholderQR.h
 eigen-3.3.7/Eigen/src/QR/HouseholderQR.h
 
 eigen-3.3.7/Eigen/src/QR/HouseholderQR_LAPACKE.h
-
-eigen-3.3.7/Eigen/src/misc/Image.h
-
-eigen-3.3.7/Eigen/src/misc/Kernel.h
 
 eigen-3.3.7/Eigen/src/misc/blas.h
 

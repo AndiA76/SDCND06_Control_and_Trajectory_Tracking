@@ -215,41 +215,43 @@ class World(object):
         start = carla.Transform()
         end = carla.Transform()
 
-#         # draw spirals
-#         height_plot_scale = 1.0
-#         height_plot_offset = 1.0
-#         blue = carla.Color(r=0, g=0, b=255)
-#         green = carla.Color(r=0, g=255, b=0)
-#         red = carla.Color(r=255, g=0, b=0)
-#         for i in range(len(spirals_x)):
-#             previous_index = 0
-#             previous_speed = 0
-#             start = carla.Transform()
-#             end = carla.Transform()
-#             color = blue
-#             if i == spiral_idx[-1]:
-#                 color = green
-#             elif i in spiral_idx[:-1]:
-#                 color = red
-#             for index in range(1, len(spirals_x[i])):
-#                 start.location.x = spirals_x[i][previous_index]
-#                 start.location.y = spirals_y[i][previous_index]
-#                 end.location.x = spirals_x[i][index]
-#                 end.location.y = spirals_y[i][index]
-#                 start.location.z = height_plot_scale * spirals_v[i][previous_index] + height_plot_offset + _road_height
-#                 end.location.z =  height_plot_scale * spirals_v[i][index] + height_plot_offset + _road_height
-#                 self.world.debug.draw_line(start.location, end.location, 0.1, color, .1)
-#                 previous_index = index
+        # -------------------------------------------------------------------------------------------
+        # draw spirals
+        height_plot_scale = 1.0
+        height_plot_offset = 1.0
+        blue = carla.Color(r=0, g=0, b=255)
+        green = carla.Color(r=0, g=255, b=0)
+        red = carla.Color(r=255, g=0, b=0)
+        for i in range(len(spirals_x)):
+            previous_index = 0
+            previous_speed = 0
+            start = carla.Transform()
+            end = carla.Transform()
+            color = blue
+            if i == spiral_idx[-1]:
+                color = green
+            elif i in spiral_idx[:-1]:
+                color = red
+            for index in range(1, len(spirals_x[i])):
+                start.location.x = spirals_x[i][previous_index]
+                start.location.y = spirals_y[i][previous_index]
+                end.location.x = spirals_x[i][index]
+                end.location.y = spirals_y[i][index]
+                start.location.z = height_plot_scale * spirals_v[i][previous_index] + height_plot_offset + _road_height
+                end.location.z =  height_plot_scale * spirals_v[i][index] + height_plot_offset + _road_height
+                self.world.debug.draw_line(start.location, end.location, 0.1, color, .1)
+                previous_index = index
 
-#         # draw path
-#         previous_index = 0
-#         for index in range(res, len(way_points), res):
-#             start.location = way_points[previous_index].location
-#             end.location = way_points[index].location
-#             start.location.z = height_plot_scale * v_points[previous_index] + height_plot_offset + _road_height
-#             end.location.z = height_plot_scale * v_points[index] + height_plot_offset + _road_height
-#             self.world.debug.draw_line(start.location, end.location, 0.1, carla.Color(r=125, g=125, b=0), .1)
-#             previous_index = index
+        # draw path
+        previous_index = 0
+        for index in range(res, len(way_points), res):
+            start.location = way_points[previous_index].location
+            end.location = way_points[index].location
+            start.location.z = height_plot_scale * v_points[previous_index] + height_plot_offset + _road_height
+            end.location.z = height_plot_scale * v_points[index] + height_plot_offset + _road_height
+            self.world.debug.draw_line(start.location, end.location, 0.1, carla.Color(r=125, g=125, b=0), .1)
+            previous_index = index
+        # -------------------------------------------------------------------------------------------
 
         # increase wait time for debug
         wait_time = 0.0
@@ -362,15 +364,20 @@ class World(object):
 
         # Get initial pose of the spawned ego vehicle (player) and its bounding box dimensions
         print('\n###')
-        print(f'Initial ego vehicle position in [m]     : {self.bounding_box.location}')
-        print(f'Initial ego vehicle orientation in [deg]: {self.bounding_box.rotation}')
+        print(f'Initial ego vehicle position in [m]     : {self.player.bounding_box.location}')
+        print(f'Initial ego vehicle orientation in [deg]: {self.player.bounding_box.rotation}')
         print(f'Half-box extent in [m]                  : {self.player.bounding_box.extent}')
         print('Overall ego vehicle dimensions in [m]:')
         print(f'Length in [m]: {2 * self.player.bounding_box.extent.x}')
         print(f'Width in [m]: {2 * self.player.bounding_box.extent.y}')
         print(f'Height in [m]: {2 * self.player.bounding_box.extent.z}')
         print('\n###')
-        print(f'Wheel position in [m]: {self.player.wheel.position}')
+        print(f'Reachable attributes of blueprint: {dir(blueprint)}')
+        print(f'Reachable attributes of self.world: {dir(self.world)}')
+        print(f'Reachable attributes of self.player: {dir(self.player)}')
+        print(f'Reachable attributes of self.player.get_physics_control: {dir(self.player.get_physics_control)}')
+        
+        #print(f'Wheel position in [m]: {self.player.get_physics_control}')
         print('\n###')
 
         # Set up the sensors.
@@ -876,7 +883,7 @@ def game_loop(args):
                 y_points = [point.location.y for point in way_points]
                 # Actual yaw angle of the ego vehicle (player) in [rad]
                 yaw = way_points[0].rotation.yaw * math.pi / 180
-                print(f'ego yaw angle sent: {velocity} rad')
+                print(f'ego yaw angle sent: {yaw} rad')
                 # Get current waypoint from the actual ego vehicle trajectory in [m]
                 waypoint_x, waypoint_y, waypoint_t, waypoint_j = world.get_waypoint(x_points[-1], y_points[-1])
                 # Actual velocity vector of the ego vehicle (player) in [m/s]
@@ -892,8 +899,12 @@ def game_loop(args):
                 print(f'ego position sent: [{location_x}, {location_y}, {location_z}] m')
 
                 # Actual ego vehicle (player) front axle position in [m]
-                print(f'player wheel position : {world.player.wheel.position}')
-                print(f'Half-box extent in [m] : {world.player.bounding_box.extent}')             
+                print(f'Half-box extent in [m] : {world.player.bounding_box.extent}')
+                ego_wheel_base = 2 * world.player.bounding_box.extent.x;
+
+                # Estimate ego vehicle front axcle position (location) in [m]
+                front_location_x = location_x + ego_wheel_base/2 * math.cos(yaw)
+                front_location_y = location_y + ego_wheel_base/2 * math.sin(yaw)
 
                 # Send measurement and planner data via uWebSocket to pid controller executable
                 ws.send(
@@ -914,7 +925,9 @@ def game_loop(args):
                             'obst_y': obst_y,
                             'location_x': location_x,
                             'location_y': location_y,
-                            'location_z': location_z
+                            'location_z': location_z,
+                            'front_location_x': front_location_x,
+                            'front_location_y': front_location_y,
                         }
                     )
                 )

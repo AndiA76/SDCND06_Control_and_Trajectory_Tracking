@@ -231,9 +231,9 @@ int main ()
   PID pid_steer = PID();
   // Initialize lateral PID controller
   double FF_steer = 0.0;
-  double Kp_steer = 0.3;
-  double Ki_steer = 0.001;
-  double Kd_steer = 0.3;
+  double Kp_steer = 0.3; // 2.1; // 0.3;
+  double Ki_steer = 0.001; // 0.01;
+  double Kd_steer = 0.1; // 0.3;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
   double int_errot_0_steer = 0.0;
@@ -252,10 +252,10 @@ int main ()
   // Create longitudinal PID controller
   PID pid_throttle = PID();
   // Initialize longitudinal PID controller
-  double FF_throttle = 0.0;
-  double Kp_throttle = 0.2;
-  double Ki_throttle = 0.0009;
-  double Kd_throttle = 0.1;
+  double FF_throttle = 0.0; // 0.0;
+  double Kp_throttle = 0.2; // 0.5; // 0.3 // 0.25;
+  double Ki_throttle = 0.02; // 0.001; // 0.0009;
+  double Kd_throttle = 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
   double int_error_0_throttle = 0.0;
@@ -300,6 +300,19 @@ int main ()
           double y_position = data["location_y"];
           double z_position = data["location_z"];
 
+          // Actual position of the ego vehicle's front axle (center point)
+          double x_position_front = data["front_location_x"];
+          double y_position_front = data["front_location_y"];
+
+          // Double check distance from vehicle center to front axle (must be constant)
+          double wheel_base = sqrt(
+            // pow(x_points[idx] - x_position_front, 2) + pow(y_points[idx] - y_position_front, 2)
+            pow(x_position_front - x_position, 2) + pow(y_position_front - y_position, 2)
+          );
+
+          // Define a lookahead index on the planned trajectory as reference for lont./lat. control
+          unsigned int idx_lookahead = x_points.size()-1;
+
           // Obstacle positions 
           if (!have_obst) {
           	vector<double> x_obst = data["obst_x"];
@@ -341,10 +354,10 @@ int main ()
           pid_steer.UpdateDeltaTime(new_delta_time);
 
           // Calculate center point of the front axle position
-          double ego_wheel_base = 4.0;
-          double x_position_front = x_position + ego_wheel_base/2 * cos(yaw);
-          double y_position_front = y_position + ego_wheel_base/2 * sin(yaw);
-
+          // double ego_wheel_base = 5.0267767906188965;
+          // double x_position_front = x_position + ego_wheel_base/2 * cos(yaw);
+          // double y_position_front = y_position + ego_wheel_base/2 * sin(yaw);
+          
           // Find the point of the planned path segment closest to the front axle center position of the ego vehicle (player)
           double crosstrack_error = 0;
           double heading_error = 0;
@@ -353,7 +366,8 @@ int main ()
           for (unsigned int idx=0; idx<x_points.size()-1; ++idx) { // Leave out last element of the path segment from the search
             // Calculate the distance of the current point on the planned path segment to the ego vehicle front axle position
             double dist = sqrt(
-              pow(x_points[idx] - x_position_front, 2) + pow(y_points[idx] - y_position_front, 2)
+              // pow(x_points[idx] - x_position_front, 2) + pow(y_points[idx] - y_position_front, 2)
+              pow(x_points[idx] - x_position, 2) + pow(y_points[idx] - y_position, 2)
             );
             if (dist < min_dist) {
               // Update minimum distance (absolute value)
@@ -362,6 +376,12 @@ int main ()
               idx_min_dist = idx;
             }
           }
+
+          // Calculate lookahead distance
+          double lookahead_dist = sqrt(
+            // pow(x_points[idx_lookahead] - x_position_front, 2) + pow(y_points[idx_lookahead] - y_position_front, 2)
+            pow(x_points[idx_lookahead] - x_position, 2) + pow(y_points[idx_lookahead] - y_position, 2)
+          );
 
           // Calculate crosstrack_error as the distance of the ego vehicle's front axle center position
           // to the tangent through the closest point approximated and its successor on the planned
@@ -372,30 +392,48 @@ int main ()
           // Ego vehicle front axcle position is on the path tangent => crosstrack_error == 0
           crosstrack_error = (
             (
-              (x_points[idx_min_dist+1] - x_points[idx_min_dist]) * (y_points[idx_min_dist] - y_position_front) -
-              (y_points[idx_min_dist+1] - y_points[idx_min_dist]) * (x_points[idx_min_dist] - x_position_front)
+              // (x_points[idx_lookahead] - x_points[idx_lookahead-1]) * (y_points[idx_lookahead-1] - y_position_front) -
+              // (y_points[idx_lookahead] - y_points[idx_lookahead-1]) * (x_points[idx_lookahead-1] - x_position_front)
+              // (x_points[idx_lookahead] - x_points[idx_lookahead-1]) * (y_points[idx_lookahead-1] - y_position) -
+              // (y_points[idx_lookahead] - y_points[idx_lookahead-1]) * (x_points[idx_lookahead-1] - x_position)
+              (x_points[idx_min_dist+1] - x_points[idx_min_dist]) * (y_points[idx_min_dist] - y_position) -
+              (y_points[idx_min_dist+1] - y_points[idx_min_dist]) * (x_points[idx_min_dist] - x_position)
+              // (x_points[idx_min_dist+1] - x_points[idx_min_dist]) * (y_points[idx_min_dist] - y_position_front) -
+              // (y_points[idx_min_dist+1] - y_points[idx_min_dist]) * (x_points[idx_min_dist] - x_position_front)
             ) / sqrt(
+              // pow(x_points[idx_lookahead] - x_points[idx_lookahead-1], 2) +
+              // pow(y_points[idx_lookahead] + y_points[idx_lookahead-1], 2)
               pow(x_points[idx_min_dist+1] - x_points[idx_min_dist], 2) +
               pow(y_points[idx_min_dist+1] + y_points[idx_min_dist], 2)
             )
           );
           // Calculate yaw angle of the planned path segment at the waypoint closest to the current ego vehicle position
           double yaw_path = angle_between_points(
-            x_points[idx_min_dist], y_points[idx_min_dist], x_points[idx_min_dist+1], y_points[idx_min_dist+1]
+            // x_points[idx_min_dist], y_points[idx_min_dist], x_points[idx_min_dist+1], y_points[idx_min_dist+1]
+            x_points[idx_lookahead-1], y_points[idx_lookahead-1], x_points[idx_lookahead], y_points[idx_lookahead]
+            // x_position, y_position, x_points[idx_lookahead], y_points[idx_lookahead]
+            // x_position_front, y_position_front, x_points[idx_lookahead], y_points[idx_lookahead]            
           );
+          
           // Compute heading_error
           heading_error = yaw_path - yaw;
+
           // Init steer correction output (considering both heading_error and crosstrack_error)
           double steer_output;
+
+          vector<double> pid_steer_errors;
 
           /**
           * Step 3: Compute lateral control command
           **/
           // Compute steer control command to apply
-          if (USE_PID_LAT) {            
+          if (USE_PID_LAT) {
             // Use PID controller
-            pid_steer.UpdateError(crosstrack_error);
+            // pid_steer.UpdateError(crosstrack_error, 0.0);
+            pid_steer.UpdateError(heading_error, yaw_path);
             steer_output = pid_steer.GetControlCommand();
+            // Get PID controller errors
+            pid_steer_errors = pid_steer.GetErrors();
           } else {
             // Use Stanley controller
             steer_output = stanley_steer.GetSteerCommand(heading_error, crosstrack_error, velocity);
@@ -409,7 +447,25 @@ int main ()
           file_steer  << i ;
           file_steer  << " " << heading_error;
           file_steer  << " " << crosstrack_error;
-          file_steer  << " " << steer_output << endl;
+          //file_steer  << " " << steer_output << endl;
+          file_steer  << " " << steer_output;
+          if (USE_PID_LAT) {
+            file_steer  << " " << pid_steer_errors[1];
+            file_steer  << " " << pid_steer_errors[2];
+          }
+          file_steer  << " " << x_points[idx_lookahead];
+          file_steer  << " " << y_points[idx_lookahead];
+          file_steer  << " " << x_points[idx_min_dist];
+          file_steer  << " " << y_points[idx_min_dist];
+          file_steer  << " " << x_position;
+          file_steer  << " " << y_position;
+          file_steer  << " " << x_position_front;
+          file_steer  << " " << y_position_front;
+          file_steer  << " " << lookahead_dist;
+          file_steer  << " " << min_dist;
+          file_steer  << " " << yaw_path;
+          file_steer  << " " << yaw;
+          file_steer  << " " << wheel_base << endl;
           file_throttle.seekg(std::ios::beg);
 
           //////////////////////////////////////////
@@ -423,16 +479,22 @@ int main ()
           pid_throttle.UpdateDeltaTime(new_delta_time);
 
           // Compute velocity_error
-          double velocity_error = v_points[idx_min_dist] - velocity;
+          // double velocity_error = v_points[idx_min_dist] - velocity;
+          double velocity_error = v_points[idx_lookahead] - velocity;
+          double throttle;
           double throttle_output;
           double brake_output;
+          vector<double> pid_throttle_errors;
 
           /**
           * Step 3: Compute longitudinal control command
           **/
           // Compute longidudinal control command to apply
-          pid_throttle.UpdateError(velocity_error);
-          double throttle = pid_throttle.GetControlCommand();
+          //pid_throttle.UpdateError(velocity_error, v_points[idx_min_dist]);
+          pid_throttle.UpdateError(velocity_error, v_points[idx_lookahead]);
+          throttle = pid_throttle.GetControlCommand();
+          // Get PID controller errors
+          pid_throttle_errors = pid_throttle.GetErrors();
 
           // Adapt the negative throttle to break
           if (throttle > 0.0) {
@@ -451,7 +513,13 @@ int main ()
           file_throttle  << i ;
           file_throttle  << " " << velocity_error;
           file_throttle  << " " << throttle_output;
-          file_throttle  << " " << brake_output << endl;
+          // file_throttle  << " " << brake_output << endl;
+          file_throttle  << " " << brake_output;
+          file_throttle  << " " << pid_throttle_errors[1];
+          file_throttle  << " " << pid_throttle_errors[2];
+          file_throttle  << " " << v_points[idx_lookahead];
+          file_throttle  << " " << v_points[idx_min_dist];
+          file_throttle  << " " << velocity << endl;
 
           // Send control signal
           json msgJson;

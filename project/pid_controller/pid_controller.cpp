@@ -11,6 +11,7 @@
 
 using namespace std;
 
+
 PID::PID() {}
 
 PID::~PID() {}
@@ -36,7 +37,7 @@ void PID::Init(double FF, double Kp, double Ki, double Kd, double output_lim_max
    output_lim_max_ = output_lim_max;
 }
 
-void PID::UpdateError(double actual_error) {
+void PID::UpdateError(double actual_error, double feedforward_input) {
    /**
    * Update PID errors based on the actual error and calculate PID control command.
    **/
@@ -55,7 +56,7 @@ void PID::UpdateError(double actual_error) {
    double pred_int_error = int_error_ + delta_t_/2 * (prev_error_ + curr_error_);
 
    // Predict PID control output (before saturation)
-   double pred_control_output = FF_ + Kp_ * curr_error_ + Ki_ * pred_int_error + Kd_ * diff_error_;
+   double pred_control_output = FF_ * feedforward_input + Kp_ * curr_error_ + Ki_ * pred_int_error + Kd_ * diff_error_;
 
    // Anti-windup for integral part: Stop integration if control output saturates
    if (pred_control_output < output_lim_min_) {
@@ -77,6 +78,14 @@ double PID::GetControlCommand() {
    * Get the PID control command bound to the interval [output_lim_min_, output_lim_max_]
    */
    return control_output_;
+}
+
+vector<double> PID::GetErrors() {
+   /**
+   * Get the PID errors as a vector<double> = {curr_err, int_error_, diff_error_}
+   */
+   vector<double> output_errors_ = {curr_error_, int_error_, diff_error_};
+   return output_errors_;
 }
 
 void PID::UpdateDeltaTime(double new_delta_time) {
