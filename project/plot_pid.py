@@ -12,8 +12,30 @@ import matplotlib.pyplot as plt
 def read_steer_data():
     """Read recorded lateral control data."""
     steer_file = 'steer_pid_data.txt'
-    steer_df = pd.read_csv(steer_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3])
-    steer_df.columns = ['Iteration', 'Heading Error', 'Crosstrack Error', 'Steering Output']
+    steer_df = pd.read_csv(
+        steer_file,
+        delim_whitespace = True,
+        header = None,
+        usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    )
+    steer_df.columns = [
+        'Iteration',
+        'Yaw Setpoint',
+        'Actual Yaw',
+        'Heading Error',
+        'Integral Heading Error', 
+        'Diffential Heading Error',
+        'Steering Control Command',
+        'Actual X-Position',
+        'Actual Y-Position',
+        'Lookahead X-Waypoint',
+        'Lookahead Y-Waypoint',
+        'Closest X-Waypoint',
+        'Closest Y-Waypoint',
+        'Distance to Lookahead Waypoint',
+        'Distance to Closest Waypoint',
+        'Yaw to Closest Waypoint',
+    ]
     print("Steer data:")
     print(steer_df.head())
     return steer_df
@@ -23,49 +45,82 @@ def read_throttle_data():
     """Read recorded longitudinal control data."""
     throttle_file = 'throttle_pid_data.txt'
     throttle_df = pd.read_csv(
-        throttle_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        throttle_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     )
     throttle_df.columns = [
         'Iteration',
-        'Velocity Error',
-        'Throttle Command',
-        'Brake Command',
-        'Velocity Integral Error',
-        'Velocity Differential Error',
-        'Planned Velocity (lookahead)',
-        'Planned Velocity (min dist.)',
+        'Velocity Setpoint',
         'Actual Velocity',
-    ]
+        'Velocity Error',
+        'Integral VelocityError',
+        'Differential VelocityError',
+        'Throttle Control Command',
+        'Throttle Output',
+        'Brake Output',
+        'Planned Velocity (Closest Point)',
+    ])
     print("Throttle data:")
     print(throttle_df.head())
     return throttle_df
 
 
 def plot_steer_data(steer_df, n_rows):
-    """Plot recorded lateral control data."""
+    """Plot recorded lateral control (steer control) data."""
     steer_df2 = steer_df[:n_rows]
     steer_df2.plot(
-        x = steer_df.columns[0],
-        y = [steer_df.columns[1], steer_df.columns[2], steer_df.columns[3]],
+        x = steer_df.columns.get_loc['Iteration'],
+        y = [
+            steer_df.columns.get_loc['Yaw Setpoint'],
+            steer_df.columns.get_loc['Actual Yaw'],
+            steer_df.columns.get_loc['Heading Error'],
+            steer_df.columns.get_loc['Integral Heading Error'],
+            steer_df.columns.get_loc['Differential Heading Error'],
+            steer_df.columns.get_loc['Steering Control Command']
+        ]
         kind = 'line',
-        label = ['heading error', 'crosstrack error', 'steering command']
+        label = [
+            'yaw setpoint',
+            'actual yaw',
+            'heading error',
+            'integral heading error',
+            'differential heading error',
+            'steering control command'
+        ]
     )
-    plt.title('Lateral control data')
+    plt.title('Lateral control (steer control)')
     plt.xlabel('Time [s]')
     plt.ylabel('Control error | Control command [1]')
     plt.show()
- 
+
     
 def plot_throttle_data(throttle_df, n_rows):
-    """Plot recorded longitudinal control data."""
+    """Plot recorded longitudinal control (throttle control) data."""
     throttle_df2 = throttle_df[:n_rows]
     throttle_df2.plot(
-        x = throttle_df.columns[0],
-        y = [throttle_df.columns[1], throttle_df.columns[2], throttle_df.columns[3]],
+        x = throttle_df.columns.get_loc['Iteration'],
+        y = [
+            throttle_df.columns.get_loc['Velocity Setpoint'],
+            throttle_df.columns.get_loc['Actual Velocity'],
+            throttle_df.columns.get_loc['Velocity Error'],
+            throttle_df.columns.get_loc['Integral Velocity Error'],
+            throttle_df.columns.get_loc['Differential Velocity Error'],
+            throttle_df.columns.get_loc['Throttle Control Command'],
+            throttle_df.columns.get_loc['Throttle Output'],
+            throttle_df.columns.get_loc['Brake Output'],
+        ]
         kind = 'line',
-        label = ['velocity error', 'throttle command', 'brake command']
+        label = [
+            'velocity setpoint',
+            'actual velocity',
+            'velocity error',
+            'integral velocity error',
+            'differential velocity error',
+            'throttle control command',
+            'throttle output',
+            'brake command',
+        ]
     )
-    plt.title('Longitudinal control data')
+    plt.title('Longitudinal control (throttle control)')
     plt.xlabel('Time [s]')
     plt.ylabel('Control error | Control command [1]')
     plt.show()
@@ -75,10 +130,14 @@ def plot_velocities(throttle_df, n_rows):
     """Plot recorded planned and actual velocity data."""
     throttle_df2 = throttle_df[:n_rows]
     throttle_df2.plot(
-        x = throttle_df.columns[0],
-        y = [throttle_df.columns[6], throttle_df.columns[7], throttle_df.columns[8]],
+        x = throttle_df.columns.get_loc['Iteration'],
+        y = [
+            throttle_df.columns.get_loc['Velocity Setpoint'],
+            throttle_df.columns.get_loc['Planned Velocity (Closest Point)'],
+            throttle_df.columns.get_loc['Actual Velocity'],
+        ],
         kind = 'line',
-        label = ['planned velocity (lookahead)', 'planned velocity (min. dist.)', 'actual velocity']
+        label = ['planned velocity (lookahead waypoint)', 'planned velocity (closest waypoint)', 'actual velocity']
     )
     plt.title('Planned and actual veolocity data')
     plt.xlabel('Time [s]')

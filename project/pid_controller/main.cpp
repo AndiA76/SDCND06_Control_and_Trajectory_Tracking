@@ -386,6 +386,11 @@ int main ()
           x_position, y_position, x_points[lookahead_wp_idx],y_points[lookahead_wp_idx]
         );
 
+        // Calculate yaw angle from the current position to the closest waypoint on the planned trajectory
+        double yaw_closest_wp = angle_between_points(
+          x_position, y_position, x_points[closest_wp_idx],y_points[closest_wp_idx]
+        );
+
         /**
         * Step 3): Update steering control given the current heading and the desired heading on the planned trajectory
         **/
@@ -399,7 +404,7 @@ int main ()
         pid_steer.Update(yaw_setpoint, yaw);
 
         // Get PID steer control command
-        double steer_control_output = pid_steer.GetControlCommand();
+        double steer_output = pid_steer.GetControlCommand();
 
         // Get PID steer control errors
         pid_steer_errors = pid_steer.GetErrors();
@@ -414,20 +419,22 @@ int main ()
         for (int j=0; j < i - 1; ++j) {
           file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
-        file_steer  << i ;
-        file_steer  << " " << yaw_setpoint;
-        file_steer  << " " << yaw;
-        file_steer  << " " << heading_error;
-        file_steer  << " " << int_headling_error;
-        file_steer  << " " << diff_headling_error;
-        file_steer  << " " << steer_control_output;
-        file_steer  << " " << x_points[lookahead_wp_idx];
-        file_steer  << " " << y_points[lookahead_wp_idx];
-        file_steer  << " " << x_points[closest_wp_idx];
-        file_steer  << " " << y_points[closest_wp_idx];
-        file_steer  << " " << x_position;
-        file_steer  << " " << y_position;
-        file_steer  << " " << lookahead_dist << endl;
+        file_steer << i ;
+        file_steer << " " << yaw_setpoint;
+        file_steer << " " << yaw;
+        file_steer << " " << heading_error;
+        file_steer << " " << int_headling_error;
+        file_steer << " " << diff_headling_error;
+        file_steer << " " << steer_output;
+        file_steer << " " << x_position;
+        file_steer << " " << y_position;
+        file_steer << " " << x_points[lookahead_wp_idx];
+        file_steer << " " << y_points[lookahead_wp_idx];
+        file_steer << " " << x_points[closest_wp_idx];
+        file_steer << " " << y_points[closest_wp_idx];
+        file_steer << " " << lookahead_wp_dist;
+        file_steer << " " << closest_wp_dist;
+        file_steer << " " << yaw_closest_wp << endl;
 
         ////////////////////////////////////////////////////
         // Longidudinal motion control (throttle control)
@@ -438,6 +445,9 @@ int main ()
           **/
         // Get the desired velocity at the lookahead waypoint on the planned trajectory as new throttle control setpoint
         double velocity_setpoint = v_points[lookahead_wp_idx];
+
+        // Get the desired velocity at the closest waypoint on the planned trajectory
+        double velocity_closest_wp = v_points[closest_wp_idx];
 
         /**
         * Step 3): Update throttle control given the current velocity and the desired velocity on the planned trajectory
@@ -452,7 +462,7 @@ int main ()
         pid_throttle.Update(velocity_setpoint, velocity);
 
         // Get PID throttle control command
-        double throttle_control_output = pid_throttle.GetControlCommand();
+        double throttle_ctrl_cmd = pid_throttle.GetControlCommand();
 
         // Get PID throttle control errors
         pid_throttle_errors = pid_throttle.GetErrors();
@@ -463,15 +473,15 @@ int main ()
         double diff_velocity_error = pid_throttle_errors[2];
 
         // Define throttle and brake control commands
-        double throttle, brake;
+        double throttle_output, brake_output;
 
         // Adapt the negative throttle to break
-        if (throttle_control_output > 0.0) {
-          throttle = throttle_control_output;
-          brake = 0;
+        if (throttle_ctrl_cmd > 0.0) {
+          throttle_output = throttle_ctrl_cmd;
+          brake_output = 0;
         } else {
-          throttle = 0;
-          brake = -throttle_control_output;
+          throttle_output = 0;
+          brake_output = -throttle_ctrl_cmd;
         }
 
         // Save longitudinal control data
@@ -479,15 +489,16 @@ int main ()
         for (int j=0; j < i - 1; ++j) {
           file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
         }
-        file_throttle  << i ;
-        file_throttle  << " " << velocity_setpoint;
-        file_throttle  << " " << velocity;
-        file_throttle  << " " << velocity_error;
-        file_throttle  << " " << int_velocity_error;
-        file_throttle  << " " << diff_velocity_error;
-        file_throttle  << " " << throttle_control_output;
-        file_throttle  << " " << throttle;
-        file_throttle  << " " << brake << endl;
+        file_throttle << i ;
+        file_throttle << " " << velocity_setpoint;
+        file_throttle << " " << velocity;
+        file_throttle << " " << velocity_error;
+        file_throttle << " " << int_velocity_error;
+        file_throttle << " " << diff_velocity_error;
+        file_throttle << " " << throttle_ctrl_cmd;
+        file_throttle << " " << throttle_output;
+        file_throttle << " " << brake_output;
+        file_throttle << " " << velocity_closest_wp << endl;
 
         // Initialize json message
         json msgJson;
