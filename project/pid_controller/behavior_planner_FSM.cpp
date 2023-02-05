@@ -168,8 +168,8 @@ State BehaviorPlannerFSM::state_transition(const State& ego_state, State goal,
     goal = _goal;
 
     // TODO: It turns out that when we teleport, the car is always at speed
-    // zero. In this case, as soon as we enter the DECEL_TO_STOP state, the
-    // condition that we are <= _stop_threshold_speed is ALWAYS true and we
+    // zero. In this the case, as soon as we enter the DECEL_TO_STOP state,
+    // the condition that we are <= _stop_threshold_speed is ALWAYS true and we
     // move straight to "STOPPED" state. To solve this issue (since we don't
     // have a motion controller yet), you should use "distance" instead of
     // speed. Make sure the distance to the stopping point is <=

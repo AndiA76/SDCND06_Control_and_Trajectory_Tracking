@@ -10,7 +10,6 @@ file(REMOVE_RECURSE
   "CMakeFiles/pid_controller.dir/utils.cpp.o"
   "CMakeFiles/pid_controller.dir/velocity_profile_generator.cpp.o"
   "CMakeFiles/pid_controller.dir/pid_controller.cpp.o"
-  "CMakeFiles/pid_controller.dir/stanley_controller.cpp.o"
   "pid_controller.pdb"
   "pid_controller"
 )

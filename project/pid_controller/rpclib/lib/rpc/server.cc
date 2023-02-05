@@ -11,9 +11,9 @@
 
 #include "rpc/detail/dev_utils.h"
 #include "rpc/detail/log.h"
+#include "rpc/detail/log.h"
 #include "rpc/detail/server_session.h"
 #include "rpc/detail/thread_group.h"
-#include "rpc/this_server.h"
 
 using namespace rpc::detail;
 using RPCLIB_ASIO::ip::tcp;
@@ -25,75 +25,46 @@ struct server::impl {
     impl(server *parent, std::string const &address, uint16_t port)
         : parent_(parent),
           io_(),
-          acceptor_(io_),
+          acceptor_(io_,
+                    tcp::endpoint(ip::address::from_string(address), port)),
           socket_(io_),
-          suppress_exceptions_(false) {
-        auto ep = tcp::endpoint(ip::address::from_string(address), port);
-        acceptor_.open(ep.protocol());
-#ifndef _WIN32
-        acceptor_.set_option(tcp::acceptor::reuse_address(true));
-#endif // !_WIN32
-        acceptor_.bind(ep);
-        acceptor_.listen();
-    }
+          suppress_exceptions_(false) {}
 
     impl(server *parent, uint16_t port)
         : parent_(parent),
           io_(),
-          acceptor_(io_),
+          acceptor_(io_, tcp::endpoint(tcp::v4(), port)),
           socket_(io_),
-          suppress_exceptions_(false) {
-        auto ep = tcp::endpoint(tcp::v4(), port);
-        acceptor_.open(ep.protocol());
-#ifndef _WIN32
-        acceptor_.set_option(tcp::acceptor::reuse_address(true));
-#endif // !_WIN32
-        acceptor_.bind(ep);
-        acceptor_.listen();
-    }
+          suppress_exceptions_(false) {}
 
     void start_accept() {
         acceptor_.async_accept(socket_, [this](std::error_code ec) {
             if (!ec) {
-                auto ep = socket_.remote_endpoint();
-                LOG_INFO("Accepted connection from {}:{}", ep.address(),
-                         ep.port());
+                LOG_INFO("Accepted connection.");
                 auto s = std::make_shared<server_session>(
                     parent_, &io_, std::move(socket_), parent_->disp_,
                     suppress_exceptions_);
                 s->start();
-                std::unique_lock<std::mutex> lock(sessions_mutex_);
                 sessions_.push_back(s);
             } else {
                 LOG_ERROR("Error while accepting connection: {}", ec);
             }
-            if (!this_server().stopping())
-                start_accept();
+            start_accept();
             // TODO: allow graceful exit [sztomi 2016-01-13]
         });
     }
 
     void close_sessions() {
-        std::unique_lock<std::mutex> lock(sessions_mutex_);
-        auto sessions_copy = sessions_;
-        sessions_.clear();
-        lock.unlock();
-
-        // release shared pointers outside of the mutex
-        for (auto &session : sessions_copy) {
+        for (auto &session : sessions_) {
             session->close();
         }
-
-        if (this_server().stopping())
-            acceptor_.cancel();
+        sessions_.clear();
     }
 
     void stop() {
         io_.stop();
         loop_workers_.join_all();
     }
-
-    unsigned short port() const { return acceptor_.local_endpoint().port(); }
 
     server *parent_;
     io_service io_;
@@ -103,23 +74,23 @@ struct server::impl {
     std::vector<std::shared_ptr<server_session>> sessions_;
     std::atomic_bool suppress_exceptions_;
     RPCLIB_CREATE_LOG_CHANNEL(server)
-    std::mutex sessions_mutex_;
 };
 
 RPCLIB_CREATE_LOG_CHANNEL(server)
 
 server::server(uint16_t port)
-    : pimpl(new server::impl(this, port)),
-      disp_(std::make_shared<dispatcher>()) {
+    : pimpl(new server::impl(this, port)), disp_(std::make_shared<dispatcher>()) {
     LOG_INFO("Created server on localhost:{}", port);
     pimpl->start_accept();
 }
 
-server::server(server &&other) noexcept { *this = std::move(other); }
+server::server(server&& other) noexcept {
+    *this = std::move(other);
+}
 
 server::server(std::string const &address, uint16_t port)
     : pimpl(new server::impl(this, address, port)),
-      disp_(std::make_shared<dispatcher>()) {
+    disp_(std::make_shared<dispatcher>()) {
     LOG_INFO("Created server on address {}:{}", address, port);
     pimpl->start_accept();
 }
@@ -130,13 +101,11 @@ server::~server() {
     }
 }
 
-server &server::operator=(server &&other) {
-    if (this != &other) {
-        pimpl = std::move(other.pimpl);
-        other.pimpl = nullptr;
-        disp_ = std::move(other.disp_);
-        other.disp_ = nullptr;
-    }
+server& server::operator=(server &&other) {
+    pimpl = std::move(other.pimpl);
+    other.pimpl = nullptr;
+    disp_ = std::move(other.disp_);
+    other.disp_ = nullptr;
     return *this;
 }
 
@@ -157,20 +126,13 @@ void server::async_run(std::size_t worker_threads) {
 
 void server::stop() { pimpl->stop(); }
 
-unsigned short server::port() const { return pimpl->port(); }
-
 void server::close_sessions() { pimpl->close_sessions(); }
 
 void server::close_session(std::shared_ptr<detail::server_session> const &s) {
-    std::unique_lock<std::mutex> lock(pimpl->sessions_mutex_);
-    auto it = std::find(begin(pimpl->sessions_), end(pimpl->sessions_), s);
-    std::shared_ptr<server_session> session;
-    if (it != end(pimpl->sessions_)) {
-        session = *it;
-        pimpl->sessions_.erase(it);
-    }
-    lock.unlock();
-    // session shared pointer is released outside of the mutex
+  auto it = std::find(begin(pimpl->sessions_), end(pimpl->sessions_), s);
+  if (it != end(pimpl->sessions_)) {
+    pimpl->sessions_.erase(it);
+  }
 }
 
-} // namespace rpc
+} /* rpc */

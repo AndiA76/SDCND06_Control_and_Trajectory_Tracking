@@ -29,7 +29,6 @@ public:
     /*
     * Coefficients
     */
-    double FF_;     // feed forward (lookahead) gain
     double Kp_;     // proportional gain
     double Ki_;     // integral gain
     double Kd_;     // differential gain
@@ -64,12 +63,12 @@ public:
     /*
     * Initialize PID.
     */
-    void Init(double FF, double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0 = 0.0);
+    void Init(double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0 = 0.0);
 
     /*
-    * Update the PID error variables given the actual error (e.g. cross-track or velocity error).
+    * Update PID control errors and control command given the actual setpoint and the actual measurement.
     */
-    void UpdateError(double actual_error, double feedforward_input);
+    void Update(double actual_setpoint, double actual_measurement);
 
     /*
     * Get the PID control command.
@@ -88,5 +87,3 @@ public:
 };
 
 #endif //PID_CONTROLLER_H
-
-

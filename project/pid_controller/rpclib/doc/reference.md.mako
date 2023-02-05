@@ -41,7 +41,7 @@ ${"### Public functions"}
 
 
     % for f in c.functions:
-${"#### "}${c.name}::${f.name}
+<h4 id="${f.id}" class="doxy">${c.name}::${f.name}</h4>
 ```cpp
 ${opt(f.type)} ${c.name}::${f.name}${f.argsstr};
 ```

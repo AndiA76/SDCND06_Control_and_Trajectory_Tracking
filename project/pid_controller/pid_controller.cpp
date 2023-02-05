@@ -16,12 +16,10 @@ PID::PID() {}
 
 PID::~PID() {}
 
-void PID::Init(double FF, double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0) {
+void PID::Init(double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0) {
    /**
    * Initialize PID coefficients, initial state of the integrator and output limits.
    **/
-   // Set feed forward (lookahead) gain
-   FF_ = FF;
    // Set proportional gain
    Kp_ = Kp;
    // Set integral gain
@@ -37,13 +35,14 @@ void PID::Init(double FF, double Kp, double Ki, double Kd, double output_lim_max
    output_lim_max_ = output_lim_max;
 }
 
-void PID::UpdateError(double actual_error, double feedforward_input) {
+void PID::Update(double actual_setpoint, double actual_measurement) {
    /**
-   * Update PID errors based on the actual error and calculate PID control command.
+   * Update PID control errors and control command given the actual setpoint and the actual measurement.
    **/
-   // Update the actual and the previous error
+
+   // Store the previous control error and calculate the actual control error
    prev_error_ = curr_error_;
-   curr_error_ = actual_error;
+   curr_error_ = actual_setpoint - actual_measurement;
 
    // Calculate differential error (prevent division by zero)
    if (delta_t_ < delta_t_min_){
@@ -56,7 +55,7 @@ void PID::UpdateError(double actual_error, double feedforward_input) {
    double pred_int_error = int_error_ + delta_t_/2 * (prev_error_ + curr_error_);
 
    // Predict PID control output (before saturation)
-   double pred_control_output = FF_ * feedforward_input + Kp_ * curr_error_ + Ki_ * pred_int_error + Kd_ * diff_error_;
+   double pred_control_output = Kp_ * curr_error_ + Ki_ * pred_int_error + Kd_ * diff_error_;
 
    // Anti-windup for integral part: Stop integration if control output saturates
    if (pred_control_output < output_lim_min_) {

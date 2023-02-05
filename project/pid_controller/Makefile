@@ -366,33 +366,6 @@ spiral_equations.cpp.s:
 	$(MAKE) -f CMakeFiles/pid_controller.dir/build.make CMakeFiles/pid_controller.dir/spiral_equations.cpp.s
 .PHONY : spiral_equations.cpp.s
 
-stanley_controller.o: stanley_controller.cpp.o
-
-.PHONY : stanley_controller.o
-
-# target to build an object file
-stanley_controller.cpp.o:
-	$(MAKE) -f CMakeFiles/pid_controller.dir/build.make CMakeFiles/pid_controller.dir/stanley_controller.cpp.o
-.PHONY : stanley_controller.cpp.o
-
-stanley_controller.i: stanley_controller.cpp.i
-
-.PHONY : stanley_controller.i
-
-# target to preprocess a source file
-stanley_controller.cpp.i:
-	$(MAKE) -f CMakeFiles/pid_controller.dir/build.make CMakeFiles/pid_controller.dir/stanley_controller.cpp.i
-.PHONY : stanley_controller.cpp.i
-
-stanley_controller.s: stanley_controller.cpp.s
-
-.PHONY : stanley_controller.s
-
-# target to generate assembly for a file
-stanley_controller.cpp.s:
-	$(MAKE) -f CMakeFiles/pid_controller.dir/build.make CMakeFiles/pid_controller.dir/stanley_controller.cpp.s
-.PHONY : stanley_controller.cpp.s
-
 utils.o: utils.cpp.o
 
 .PHONY : utils.o
@@ -483,9 +456,6 @@ help:
 	@echo "... spiral_equations.o"
 	@echo "... spiral_equations.i"
 	@echo "... spiral_equations.s"
-	@echo "... stanley_controller.o"
-	@echo "... stanley_controller.i"
-	@echo "... stanley_controller.s"
 	@echo "... utils.o"
 	@echo "... utils.i"
 	@echo "... utils.s"

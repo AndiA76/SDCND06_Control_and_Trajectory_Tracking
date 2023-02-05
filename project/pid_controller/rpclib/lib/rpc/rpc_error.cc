@@ -21,6 +21,4 @@ timeout::timeout(std::string const &what_arg) : std::runtime_error(what_arg) {
 
 const char *timeout::what() const noexcept { return formatted.data(); }
 
-const char* system_error::what() const noexcept { return std::system_error::what(); }
-
 } /* rpc */

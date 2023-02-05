@@ -23,27 +23,6 @@ public:
                  RPCLIB_ASIO::ip::tcp::socket socket)
         : socket_(std::move(socket)), write_strand_(*io), exit_(false) {}
 
-    void close() {
-        exit_ = true;
-
-        auto self = shared_from_this();
-        write_strand_.post([this, self]() {
-            LOG_INFO("Closing socket");
-            std::error_code e;
-            socket_.shutdown(
-                RPCLIB_ASIO::ip::tcp::socket::shutdown_both, e);
-            if (e) {
-                LOG_WARN("std::system_error during socket shutdown. "
-                            "Code: {}. Message: {}", e.value(), e.message());
-            }
-            socket_.close();
-        });
-    }
-
-    bool is_closed() const {
-        return exit_.load();
-    }
-
     void do_write() {
         if (exit_) {
             return;
@@ -67,6 +46,20 @@ public:
                     } else {
                         LOG_ERROR("Error while writing to socket: {}", ec);
                     }
+
+                    if (exit_) {
+                        LOG_INFO("Closing socket");
+                        try {
+                            socket_.shutdown(
+                                RPCLIB_ASIO::ip::tcp::socket::shutdown_both);
+                        }
+                        catch (std::system_error &e) {
+                            (void)e;
+                            LOG_WARN("std::system_error during socket shutdown. "
+                                     "Code: {}. Message: {}", e.code(), e.what());
+                        }
+                        socket_.close();
+                    }
                 }));
     }
 
@@ -79,9 +72,7 @@ public:
         do_write();
     }
 
-    RPCLIB_ASIO::ip::tcp::socket& socket() {
-        return socket_;
-    }
+    friend class rpc::client;
 
 protected:
     template <typename Derived>
@@ -89,14 +80,15 @@ protected:
         return std::static_pointer_cast<Derived>(shared_from_this());
     }
 
-    RPCLIB_ASIO::strand& write_strand() {
-        return write_strand_;
-    }
-
-private:
+protected:
     RPCLIB_ASIO::ip::tcp::socket socket_;
     RPCLIB_ASIO::strand write_strand_;
     std::atomic_bool exit_{false};
+    bool exited_ = false;
+    std::mutex m_exit_;
+    std::condition_variable cv_exit_;
+
+private:
     std::deque<RPCLIB_MSGPACK::sbuffer> write_queue_;
     RPCLIB_CREATE_LOG_CHANNEL(async_writer)
 };
