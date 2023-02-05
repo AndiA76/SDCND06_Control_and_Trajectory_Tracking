@@ -16,15 +16,15 @@ def read_steer_data():
         steer_file,
         delim_whitespace = True,
         header = None,
-        usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+        usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
     )
     steer_df.columns = [
         'Iteration',
         'Yaw Setpoint',
         'Actual Yaw',
         'Heading Error',
-        'Integral Heading Error', 
-        'Diffential Heading Error',
+        'Integral Heading Error',
+        'Differential Heading Error',
         'Steering Control Command',
         'Crosstrack Error w.r.t. Lookahead Waypoint',
         'Crosstrack Error w.r.t. Closest Waypoint',
@@ -36,6 +36,7 @@ def read_steer_data():
         'Closest Y-Waypoint',
         'Distance to Lookahead Waypoint',
         'Distance to Closest Waypoint',
+        'Yaw to Lookahead Waypoint',
         'Yaw to Closest Waypoint',
     ]
     print("Steer data:")
@@ -47,20 +48,21 @@ def read_throttle_data():
     """Read recorded longitudinal control data."""
     throttle_file = 'throttle_pid_data.txt'
     throttle_df = pd.read_csv(
-        throttle_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        throttle_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     )
     throttle_df.columns = [
         'Iteration',
         'Velocity Setpoint',
         'Actual Velocity',
         'Velocity Error',
-        'Integral VelocityError',
-        'Differential VelocityError',
+        'Integral Velocity Error',
+        'Differential Velocity Error',
         'Throttle Control Command',
         'Throttle Output',
         'Brake Output',
+        'Planned Velocity (Lookahead Point)'
         'Planned Velocity (Closest Point)',
-    ])
+    ]
     print("Throttle data:")
     print(throttle_df.head())
     return throttle_df
@@ -78,14 +80,14 @@ def plot_steer_data(steer_df, n_rows):
     # Plot steering control errors
     steer_df2.plot(
         ax = ax1,
-        x = steer_df.columns.get_loc['Iteration'],
+        x = steer_df.loc[:, 'Iteration'],
         y = [
-            steer_df.columns.get_loc['Yaw Setpoint'],
-            steer_df.columns.get_loc['Actual Yaw'],
-            steer_df.columns.get_loc['Heading Error'],
-            steer_df.columns.get_loc['Integral Heading Error'],
-            steer_df.columns.get_loc['Differential Heading Error'],
-        ]
+            steer_df.loc[:, 'Yaw Setpoint'],
+            steer_df.loc[:, 'Actual Yaw'],
+            steer_df.loc[:, 'Heading Error'],
+            steer_df.loc[:, 'Integral Heading Error'],
+            steer_df.loc[:, 'Differential Heading Error'],
+        ],
         kind = 'line',
         label = [
             'yaw setpoint',
@@ -93,45 +95,45 @@ def plot_steer_data(steer_df, n_rows):
             'heading error',
             'integral heading error',
             'differential heading error',
-        ],
-        title = 'Steering control errors',
-        xlabel = 'Time [s]',
-        ylabel = 'Heading error [rad]',
+        ]
     )
+    ax1.set_title('Steering control errors')
+    ax1.set_xlabel('Time [s]')
+    ax1.set_ylabel('Heading error [rad]')
 
     # Plot steering control ouptut
     steer_df2.plot(
         ax = ax2,
-        x = steer_df.columns.get_loc['Iteration'],
+        x = steer_df.loc[:, 'Iteration'],
         y = [
-            steer_df.columns.get_loc['Steering Control Command'],
-        ]
+            steer_df.loc[:, 'Steering Control Command'],
+        ],
         kind = 'line',
         label = [
             'steering control command',
-        ],
-        title = 'Steering control command',
-        xlabel = 'Time [s]',
-        ylabel = 'Steer control output [1]',
+        ]
     )
+    ax2.set_title('Steering control command')
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel('Steer control output [1]')
 
     # Plot crosstrack error
     steer_df2.plot(
         ax = ax3,
-        x = steer_df.columns.get_loc['Iteration'],
+        x = steer_df.loc[:, 'Iteration'],
         y = [
-            steer_df.columns.get_loc['Crosstrack Error w.r.t. Lookahead Waypoint'],
-            steer_df.columns.get_loc['Crosstrack Error w.r.t. Closest Waypoint'],
-        ]
+            steer_df.loc[:, 'Crosstrack Error w.r.t. Lookahead Waypoint'],
+            steer_df.loc[:, 'Crosstrack Error w.r.t. Closest Waypoint'],
+        ],
         kind = 'line',
         label = [
             'crosstrack error w.r.t. lookahead waypoint',
             'crosstrack error w.r.t. closest waypoint',
-        ],
-        title = 'Crosstrack error (steer control)',
-        xlabel = 'Time [s]',
-        ylabel = 'Crosstrack error [m]',
+        ]
     )
+    ax3.set_title('Crosstrack error (steer control)')
+    ax3.set_xlabel('Time [s]')
+    ax3.set_ylabel('Crosstrack error [m]')
 
     fig.suptitle('Lateral control (steer control)')
     plt.show()
@@ -149,14 +151,14 @@ def plot_throttle_data(throttle_df, n_rows):
     # Plot velocity control errors
     throttle_df2.plot(
         ax = ax1,
-        x = throttle_df.columns.get_loc['Iteration'],
+        x = throttle_df.loc[:, 'Iteration'],
         y = [
-            throttle_df.columns.get_loc['Velocity Setpoint'],
-            throttle_df.columns.get_loc['Actual Velocity'],
-            throttle_df.columns.get_loc['Velocity Error'],
-            throttle_df.columns.get_loc['Integral Velocity Error'],
-            throttle_df.columns.get_loc['Differential Velocity Error'],
-        ]
+            throttle_df.loc[:, 'Velocity Setpoint'],
+            throttle_df.loc[:, 'Actual Velocity'],
+            throttle_df.loc[:, 'Velocity Error'],
+            throttle_df.loc[:, 'Integral Velocity Error'],
+            throttle_df.loc[:, 'Differential Velocity Error'],
+        ],
         kind = 'line',
         label = [
             'velocity setpoint',
@@ -164,31 +166,32 @@ def plot_throttle_data(throttle_df, n_rows):
             'velocity error',
             'integral velocity error',
             'differential velocity error',
-        ],
-        title = 'Throttle control errors',
-        xlabel = 'Time [s]',
-        ylabel = 'Throttle and brake output [1]',
+        ]
     )
+    ax1.set_title('Throttle control errors')
+    ax1.set_xlabel('Time [s]')
+    ax1.set_ylabel('Throttle and brake output [1]')
 
     # Plot throttle control ouptut
     throttle_df2.plot(
         ax = ax2,
-        x = throttle_df.columns.get_loc['Iteration'],
+        x = throttle_df.loc[:, 'Iteration'],
         y = [
-            throttle_df.columns.get_loc['Throttle Control Command'],
-            throttle_df.columns.get_loc['Throttle Output'],
-            throttle_df.columns.get_loc['Brake Output'],
-        ]
+            throttle_df.loc[:, 'Throttle Control Command'],
+            throttle_df.loc[:, 'Throttle Output'],
+            throttle_df.loc[:, 'Brake Output'],
+        ],
         kind = 'line',
         label = [
             'throttle control command',
             'throttle output',
             'brake command',
-        ],
-        title = 'Throttle & brake control command',
-        xlabel = 'Time [s]',
-        ylabel = 'Throttle & brake output [1]',
+        ]
     )
+    ax2.set_title('Throttle & brake control command')
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel('Throttle & brake output [1]')
+
     fig.suptitle('Longitudinal control (throttle control)')
     plt.show()
 
@@ -205,60 +208,60 @@ def plot_path_coordinates(steer_df, n_rows):
     # Plot x-coordinates of actual and planned path
     steer_df2.plot(
         ax = ax1,
-        x = steer_df.columns.get_loc['Iteration'],
+        x = steer_df.loc[:, 'Iteration'],
         y = [
-            steer_df.columns.get_loc['Actual X-Position'],
-            steer_df.columns.get_loc['Lookahead X-Waypoint'],
-            steer_df.columns.get_loc['Closest X-Waypoint'],
-        ]
+            steer_df.loc[:, 'Actual X-Position'],
+            steer_df.loc[:, 'Lookahead X-Waypoint'],
+            steer_df.loc[:, 'Closest X-Waypoint'],
+        ],
         kind = 'line',
         label = [
             'actual x-position',
             'lookahead x-waypoint',
             'closest x-waypoint',
-        ],
-        title = 'X-coordinates of actual and planned trajectory',
-        xlabel = 'Time [s]',
-        ylabel = 'X-cooridnate in [m]',
+        ]
     )
+    ax1.set_title('X-coordinates of actual and planned trajectory')
+    ax1.set_xlabel('Time [s]')
+    ax1.set_ylabel('X-cooridnate in [m]')
 
     # Plot y-coordinates of actual and planned path
     steer_df2.plot(
         ax = ax2,
-        x = steer_df.columns.get_loc['Iteration'],
+        x = steer_df.loc[:, 'Iteration'],
         y = [
-            steer_df.columns.get_loc['Actual Y-Position'],
-            steer_df.columns.get_loc['Lookahead Y-Waypoint'],
-            steer_df.columns.get_loc['Closest Y-Waypoint'],
-        ]
+            steer_df.loc[:, 'Actual Y-Position'],
+            steer_df.loc[:, 'Lookahead Y-Waypoint'],
+            steer_df.loc[:, 'Closest Y-Waypoint'],
+        ],
         kind = 'line',
         label = [
             'actual y-position',
             'lookahead y-waypoint',
             'closest y-waypoint',
-        ],
-        title = 'Y-coordinates of actual and planned trajectory',
-        xlabel = 'Time [s]',
-        ylabel = 'Y-cooridnate in [m]',
+        ]
     )
+    ax2.set_title('Y-coordinates of actual and planned trajectory')
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel('Y-cooridnate in [m]')
 
     # Plot distances between actual position and planned path waypoints
     steer_df2.plot(
         ax = ax3,
-        x = steer_df.columns.get_loc['Iteration'],
+        x = steer_df.loc[:, 'Iteration'],
         y = [
-            steer_df.columns.get_loc['Distance to Lookahead Waypoint'],
-            steer_df.columns.get_loc['Distance to Closest Waypoint'],
-        ]
+            steer_df.loc[:, 'Distance to Lookahead Waypoint'],
+            steer_df.loc[:, 'Distance to Closest Waypoint'],
+        ],
         kind = 'line',
         label = [
             'distance to lookahead waypoint',
             'distance to closest waypoint',
-        ],
-        title = 'Distances between actual position and planned path waypoints',
-        xlabel = 'Time [s]',
-        ylabel = 'Distance in [m]',
+        ]
     )
+    ax3.set_title('Distances between actual position and planned path waypoints')
+    ax3.set_xlabel('Time [s]')
+    ax3.set_ylabel('Distance in [m]')
 
     fig.suptitle('Path coordinates of actual and planned trajectories')
     plt.show()
@@ -276,43 +279,43 @@ def plot_trajectories(steer_df, n_rows):
     # Plot actual trajectory
     steer_df2.plot(
         ax = ax,
-        x = steer_df.columns.get_loc['Actual X-Position'],
+        x = steer_df.loc[:, 'Actual X-Position'],
         y = [
-            steer_df.columns.get_loc['Actual Y-Position'],
-        ]
+            steer_df.loc[:, 'Actual Y-Position'],
+        ],
         kind = 'line',
         label = [
             'actual trajectory',
         ],
-        color='black',
+        color='black'
     )
 
     # Plot planned trajectory w.r.t. to lookahead waypoint
     steer_df2.plot(
         ax = ax,
-        x = steer_df.columns.get_loc['Lookahead X-Waypoint'],
+        x = steer_df.loc[:, 'Lookahead X-Waypoint'],
         y = [
-            steer_df.columns.get_loc['Lookahead Y-Waypoint'],
-        ]
+            steer_df.loc[:, 'Lookahead Y-Waypoint'],
+        ],
         kind = 'line',
         label = [
             'planned trajectory (lookahead waypoint)',
         ],
-        color='blue',
+        color='blue'
     )
 
     # Plot planned trajectory w.r.t. to closest waypoint
     steer_df2.plot(
         ax = ax,
-        x = steer_df.columns.get_loc['Closest X-Waypoint'],
+        x = steer_df.loc[:, 'Closest X-Waypoint'],
         y = [
-            steer_df.columns.get_loc['Closest Y-Waypoint'],
-        ]
+            steer_df.loc[:, 'Closest Y-Waypoint'],
+        ],
         kind = 'line',
         label = [
             'planned trajectory (closest waypoint)',
         ],
-        color='green',
+        color='green'
     )
     ax.set_xlabel('X-coordinate [m]')
     ax.set_ylabel('Y-cooridnate [m]')
