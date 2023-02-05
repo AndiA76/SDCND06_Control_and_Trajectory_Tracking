@@ -424,13 +424,16 @@ int main ()
           x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
         );
 
+        // Calculate heading error w.r.t. the lookahead waypoint on the planned trajectory
+        double heading_error_lookahead_wp = yaw_lookahead_wp - yaw;
+
         // Calculate desired yaw angle from the current position to the closest waypoint on the planned trajectory
         double yaw_closest_wp = angle_between_points(
           x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
         );
 
-        // Define set point for heading error calculation and steering control input
-        double yaw_setpoint = yaw_closest_wp;
+        // Calculate heading error w.r.t. the closest waypoint on the planned trajectory
+        double heading_error_closest_wp = yaw_closest_wp - yaw;
 
         // Get crosstrack error w.r.t. to the lookahed waypoint on the planned trajectory
         double cte_lookahead_wp = y_points_ego[lookahead_wp_idx];
@@ -444,11 +447,19 @@ int main ()
         // Define vector to hold the pid steer control errors
         vector<double> pid_steer_errors;
 
+        // Define set point for steering control variable (select control variable)
+        double steer_setpoint = yaw_closest_wp;
+        // double steer_setpoint = cte_closest_wp;
+
+        // Define actual steering control variable (select control variable)
+        double steer_act_value = yaw;
+        // double steer_act_value = 0;
+
         // Update the delta time with the previous command
         pid_steer.UpdateDeltaTime(new_delta_time);
 
         // Compute PID steer control command to apply
-        pid_steer.Update(yaw_setpoint, yaw);
+        pid_steer.Update(steer_setpoint, steer_act_value);
 
         // Get PID steer control command
         double steer_output = pid_steer.GetControlCommand();
@@ -457,9 +468,9 @@ int main ()
         pid_steer_errors = pid_steer.GetErrors();
 
         // Decompose pid steer error vector
-        double heading_error = pid_steer_errors[0];
-        double int_headling_error = pid_steer_errors[1];
-        double diff_headling_error = pid_steer_errors[2];
+        double prop_steer_error = pid_steer_errors[0];
+        double int_steer_error = pid_steer_errors[1];
+        double diff_steer_error = pid_steer_errors[2];
 
         // Save lateral control data
         file_steer.seekg(std::ios::beg);
@@ -467,12 +478,17 @@ int main ()
           file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
         file_steer << i ;
-        file_steer << " " << yaw_setpoint;
-        file_steer << " " << yaw;
-        file_steer << " " << heading_error;
-        file_steer << " " << int_headling_error;
-        file_steer << " " << diff_headling_error;
+        file_steer << " " << steer_setpoint;
+        file_steer << " " << steer_act_value;
+        file_steer << " " << prop_steer_error;
+        file_steer << " " << int_steer_error;
+        file_steer << " " << diff_steer_error;
         file_steer << " " << steer_output;
+        file_steer << " " << yaw_lookahead_wp;
+        file_steer << " " << yaw_closest_wp;
+        file_steer << " " << yaw;
+        file_steer << " " << heading_error_lookahead_wp;
+        file_steer << " " << heading_error_closest_wp;
         file_steer << " " << cte_lookahead_wp;
         file_steer << " " << cte_closest_wp;
         file_steer << " " << x_position;
@@ -482,9 +498,7 @@ int main ()
         file_steer << " " << x_points[closest_wp_idx];
         file_steer << " " << y_points[closest_wp_idx];
         file_steer << " " << dist_lookahead_wp;
-        file_steer << " " << dist_closest_wp;
-        file_steer << " " << yaw_lookahead_wp;
-        file_steer << " " << yaw_closest_wp << endl;
+        file_steer << " " << dist_closest_wp << endl;
 
         ////////////////////////////////////////////////////
         // Longidudinal motion control (throttle control)
@@ -521,7 +535,7 @@ int main ()
         pid_throttle_errors = pid_throttle.GetErrors();
 
         // Decompose pid throttle error vector
-        double velocity_error = pid_throttle_errors[0];
+        double prop_velocity_error = pid_throttle_errors[0];
         double int_velocity_error = pid_throttle_errors[1];
         double diff_velocity_error = pid_throttle_errors[2];
 
@@ -545,7 +559,7 @@ int main ()
         file_throttle << i ;
         file_throttle << " " << velocity_setpoint;
         file_throttle << " " << velocity;
-        file_throttle << " " << velocity_error;
+        file_throttle << " " << prop_velocity_error;
         file_throttle << " " << int_velocity_error;
         file_throttle << " " << diff_velocity_error;
         file_throttle << " " << throttle_ctrl_cmd;
