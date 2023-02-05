@@ -294,9 +294,9 @@ int main ()
   **/
   PID pid_steer = PID();
   // Initialize pid steer controller for lateral motion control
-  double Kp_steer = 0.2; // 2.1; // 0.3;
-  double Ki_steer = 0.0; // 0.001; // 0.01;
-  double Kd_steer = 0.3; // 0.1; // 0.3; // 0.6;
+  double Kp_steer = 0.18; // 0.21; // 0.3;
+  double Ki_steer = 0.008; // 0.001; // 0.01;
+  double Kd_steer = 0.28; // 0.1; // 0.3; // 0.6;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
   double int_errot_0_steer = 0.0;
@@ -307,9 +307,9 @@ int main ()
   **/
   PID pid_throttle = PID();
   // Initialize pid throttle controller for longitudinal motion control
-  double Kp_throttle = 0.22; // 0.5; // 0.3 // 0.25;
-  double Ki_throttle = 0.001; // 0.02; // 0.001; // 0.0009;
-  double Kd_throttle = 0.05; // 0.08; // 0.0; // 0.1;
+  double Kp_throttle = 0.17; // 0.5; // 0.3 // 0.25;
+  double Ki_throttle = 0.004; // 0.02; // 0.001; // 0.0009;
+  double Kd_throttle = 0.0; // 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
   double int_error_0_throttle = 0.0;
@@ -404,7 +404,8 @@ int main ()
         );
 
         // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
-        unsigned int lookahead_wp_idx = x_points.size()-1;
+        // unsigned int lookahead_wp_idx = x_points.size()-1;
+        unsigned int lookahead_wp_idx = closest_wp_idx + 2;
 
         // Calculate distance to lookahead waypoint
         double dist_lookahead_wp = distance_between_points(
@@ -450,7 +451,9 @@ int main ()
 
         // Define set point for steering control variable (select control variable)
         // double steer_setpoint = yaw_closest_wp;
-        double steer_setpoint = cte_closest_wp;
+        // double steer_setpoint = yaw_lookahead_wp;
+        // double steer_setpoint = cte_closest_wp;
+        double steer_setpoint = cte_lookahead_wp;
 
         // Define actual steering control variable (select control variable)
         // double steer_act_value = yaw;
@@ -531,7 +534,8 @@ int main ()
         vector<double> pid_throttle_error_gains;
 
         // Define set point for velocity error calculation and throttle control input
-        double velocity_setpoint = velocity_closest_wp;
+        // double velocity_setpoint = velocity_closest_wp;
+        double velocity_setpoint = velocity_lookahead_wp;
 
         // Update the delta time with the previous command
         pid_throttle.UpdateDeltaTime(new_delta_time);
