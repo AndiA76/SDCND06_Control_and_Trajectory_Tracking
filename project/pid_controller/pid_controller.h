@@ -78,7 +78,7 @@ public:
     /*
     * Get the PID control error gains.
     */
-    vector<double> PID::GetErrorGains();
+    vector<double> GetErrorGains();
 
     /*
     * Get the PID control errors.

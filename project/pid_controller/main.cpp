@@ -294,9 +294,9 @@ int main ()
   **/
   PID pid_steer = PID();
   // Initialize pid steer controller for lateral motion control
-  double Kp_steer = 0.4; // 2.1; // 0.3;
+  double Kp_steer = 0.2; // 2.1; // 0.3;
   double Ki_steer = 0.0; // 0.001; // 0.01;
-  double Kd_steer = 0.0; // 0.1; // 0.3; // 0.6;
+  double Kd_steer = 0.3; // 0.1; // 0.3; // 0.6;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
   double int_errot_0_steer = 0.0;
@@ -307,9 +307,9 @@ int main ()
   **/
   PID pid_throttle = PID();
   // Initialize pid throttle controller for longitudinal motion control
-  double Kp_throttle = 0.2; // 0.5; // 0.3 // 0.25;
-  double Ki_throttle = 0.0; // 0.02; // 0.001; // 0.0009;
-  double Kd_throttle = 0.0; // 0.08; // 0.0; // 0.1;
+  double Kp_throttle = 0.22; // 0.5; // 0.3 // 0.25;
+  double Ki_throttle = 0.001; // 0.02; // 0.001; // 0.0009;
+  double Kd_throttle = 0.05; // 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
   double int_error_0_throttle = 0.0;
@@ -395,20 +395,20 @@ int main ()
         new_delta_time = difftime(timer, prev_timer);
         prev_timer = timer;
 
-        // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
-        unsigned int lookahead_wp_idx = x_points.size()-1;
-
-        // Calculate distance to lookahead waypoint
-        double dist_lookahead_wp = distance_between_points(
-          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
-        );
-
         // Find closest point on planned path segment to the current ego vehicle (player) position
         unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, x_position, y_position);
 
         // Calculate distance to closest point on planned path segment
         double dist_closest_wp = distance_between_points(
           x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
+        );
+
+        // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
+        unsigned int lookahead_wp_idx = x_points.size()-1;
+
+        // Calculate distance to lookahead waypoint
+        double dist_lookahead_wp = distance_between_points(
+          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
         );
 
         ////////////////////////////////////////////////////
@@ -419,14 +419,6 @@ int main ()
           * Step 2: Get a desired heading from the current ego vehicle position towards the lookahead waypoint on
           *         the planned trajectory to calculte a new setpoint for steering control
           **/
-        // Calculate desired yaw angle from the current position to the lookahead waypoint on the planned trajectory
-        double yaw_lookahead_wp = angle_between_points(
-          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
-        );
-
-        // Calculate heading error w.r.t. the lookahead waypoint on the planned trajectory
-        double heading_error_lookahead_wp = yaw_lookahead_wp - yaw;
-
         // Calculate desired yaw angle from the current position to the closest waypoint on the planned trajectory
         double yaw_closest_wp = angle_between_points(
           x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
@@ -434,6 +426,14 @@ int main ()
 
         // Calculate heading error w.r.t. the closest waypoint on the planned trajectory
         double heading_error_closest_wp = yaw_closest_wp - yaw;
+
+        // Calculate desired yaw angle from the current position to the lookahead waypoint on the planned trajectory
+        double yaw_lookahead_wp = angle_between_points(
+          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
+        );
+
+        // Calculate heading error w.r.t. the lookahead waypoint on the planned trajectory
+        double heading_error_lookahead_wp = yaw_lookahead_wp - yaw;
 
         // Get crosstrack error w.r.t. to the lookahed waypoint on the planned trajectory
         double cte_lookahead_wp = y_points_ego[lookahead_wp_idx];
@@ -449,12 +449,12 @@ int main ()
         vector<double> pid_steer_error_gains;
 
         // Define set point for steering control variable (select control variable)
-        double steer_setpoint = yaw_closest_wp;
-        // double steer_setpoint = cte_closest_wp;
+        // double steer_setpoint = yaw_closest_wp;
+        double steer_setpoint = cte_closest_wp;
 
         // Define actual steering control variable (select control variable)
-        double steer_act_value = yaw;
-        // double steer_act_value = 0;
+        // double steer_act_value = yaw;
+        double steer_act_value = 0;
 
         // Update the delta time with the previous command
         pid_steer.UpdateDeltaTime(new_delta_time);
@@ -494,21 +494,21 @@ int main ()
         file_steer << " " << int_steer_error_gain;
         file_steer << " " << diff_steer_error_gain;
         file_steer << " " << steer_output;
-        file_steer << " " << yaw_lookahead_wp;
         file_steer << " " << yaw_closest_wp;
+        file_steer << " " << yaw_lookahead_wp;
         file_steer << " " << yaw;
-        file_steer << " " << heading_error_lookahead_wp;
         file_steer << " " << heading_error_closest_wp;
-        file_steer << " " << cte_lookahead_wp;
+        file_steer << " " << heading_error_lookahead_wp;
         file_steer << " " << cte_closest_wp;
+        file_steer << " " << cte_lookahead_wp;
         file_steer << " " << x_position;
         file_steer << " " << y_position;
-        file_steer << " " << x_points[lookahead_wp_idx];
-        file_steer << " " << y_points[lookahead_wp_idx];
         file_steer << " " << x_points[closest_wp_idx];
         file_steer << " " << y_points[closest_wp_idx];
-        file_steer << " " << dist_lookahead_wp;
-        file_steer << " " << dist_closest_wp << endl;
+        file_steer << " " << x_points[lookahead_wp_idx];
+        file_steer << " " << y_points[lookahead_wp_idx];
+        file_steer << " " << dist_closest_wp;
+        file_steer << " " << dist_lookahead_wp << endl;
 
         ////////////////////////////////////////////////////
         // Longidudinal motion control (throttle control)
@@ -517,14 +517,11 @@ int main ()
           * Step 2: Get a desired velocity setpoint from the lookahead waypoint on the planned trajectory
           *         to calculte a new setpoint for throttle control
           **/
-        // Get the desired velocity at the lookahead waypoint on the planned trajectory
-        double velocity_lookahead_wp = v_points[lookahead_wp_idx];
-
         // Get the desired velocity at the closest waypoint on the planned trajectory
         double velocity_closest_wp = v_points[closest_wp_idx];
 
-        // Define set point for velocity error calculation and throttle control input
-        double velocity_setpoint = velocity_closest_wp;
+        // Get the desired velocity at the lookahead waypoint on the planned trajectory
+        double velocity_lookahead_wp = v_points[lookahead_wp_idx];
 
         /**
         * Step 3): Update throttle control given the current velocity and the desired velocity on the planned trajectory
@@ -532,6 +529,9 @@ int main ()
         // Define vector to hold the pid throttle control errors and error gains
         vector<double> pid_throttle_errors;
         vector<double> pid_throttle_error_gains;
+
+        // Define set point for velocity error calculation and throttle control input
+        double velocity_setpoint = velocity_closest_wp;
 
         // Update the delta time with the previous command
         pid_throttle.UpdateDeltaTime(new_delta_time);
@@ -585,8 +585,8 @@ int main ()
         file_throttle << " " << throttle_ctrl_cmd;
         file_throttle << " " << throttle_output;
         file_throttle << " " << brake_output;
-        file_throttle << " " << velocity_lookahead_wp;
-        file_throttle << " " << velocity_closest_wp << endl;
+        file_throttle << " " << velocity_closest_wp;
+        file_throttle << " " << velocity_lookahead_wp << endl;
 
         // Initialize json message
         json msgJson;

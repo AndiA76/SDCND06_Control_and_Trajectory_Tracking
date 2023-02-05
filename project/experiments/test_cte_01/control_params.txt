@@ -1,0 +1,17 @@
+Steering control on crosstrack error w.r.t. closest waypoint
+
+Steering control parameters:
+Kp_steer = 0.2;
+Ki_steer = 0.0;
+Kd_steer = 0.0;
+output_lim_min_steer = -1.2;
+output_lim_max_steer = 1.2;
+int_errot_0_steer = 0.0;
+
+Throttle control parameters:
+Kp_throttle = 0.2;
+Ki_throttle = 0.0;
+Kd_throttle = 0.0;
+output_lim_min_throttle = -1.0;
+output_lim_max_throttle = 1.0;
+int_error_0_throttle = 0.0;

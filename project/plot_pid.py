@@ -12,15 +12,13 @@ import matplotlib.pyplot as plt
 def read_steer_data():
     """Read recorded lateral control data."""
     steer_file = 'steer_pid_data.txt'
+    cols = pd.read_csv(steer_file, delim_whitespace = True, nrows = 1).columns
     steer_df = pd.read_csv(
-        steer_file,
-        delim_whitespace = True,
-        header = None,
-        usecols = [0 : 24]
+        steer_file, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
     )
     steer_df.columns = [
         'Iteration',
-        'Steer Setpoint',
+        'Steer Setpoint Value',
         'Actual Steer Value',
         'Proportional Steer Error',
         'Integral Steer Error',
@@ -29,21 +27,21 @@ def read_steer_data():
         'Integral Steer Error Gain',
         'Differential Steer Error Gain',
         'Steer Control Command',
-        'Yaw to Lookahead Waypoint',
         'Yaw to Closest Waypoint',
+        'Yaw to Lookahead Waypoint',
         'Actual Yaw',
-        'Heading Error w.r.t. Lookahead Waypoint',
         'Heading Error w.r.t. Closest Waypoint',
-        'Crosstrack Error w.r.t. Lookahead Waypoint',
+        'Heading Error w.r.t. Lookahead Waypoint',
         'Crosstrack Error w.r.t. Closest Waypoint',
+        'Crosstrack Error w.r.t. Lookahead Waypoint',
         'Actual X-Position',
         'Actual Y-Position',
-        'Lookahead X-Waypoint',
-        'Lookahead Y-Waypoint',
         'Closest X-Waypoint',
         'Closest Y-Waypoint',
-        'Distance to Lookahead Waypoint',
+        'Lookahead X-Waypoint',
+        'Lookahead Y-Waypoint',
         'Distance to Closest Waypoint',
+        'Distance to Lookahead Waypoint',
     ]
     print("Steer data:")
     print(steer_df.head())
@@ -54,8 +52,9 @@ def read_steer_data():
 def read_throttle_data():
     """Read recorded longitudinal control data."""
     throttle_file = 'throttle_pid_data.txt'
+    cols = pd.read_csv(throttle_file, delim_whitespace = True, nrows = 1).columns
     throttle_df = pd.read_csv(
-        throttle_file, delim_whitespace = True, header = None, usecols = [0 : 13]
+        throttle_file, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
     )
     throttle_df.columns = [
         'Iteration',
@@ -69,9 +68,9 @@ def read_throttle_data():
         'Differential Throttle Error Gain',
         'Throttle Control Command',
         'Throttle Output',
-        'Brake Output',
-        'Planned Velocity (Lookahead Point)',
+        'Brake Output',        
         'Planned Velocity (Closest Point)',
+        'Planned Velocity (Lookahead Point)',
     ]
     print("Throttle data:")
     print(throttle_df.head())
@@ -93,7 +92,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax1,
         x = 'Iteration',
         y = [
-            'Steer Setpoint',
+            'Steer Setpoint Value',
             'Actual Steer Value',
             'Proportional Steer Error',
             'Integral Steer Error',
@@ -124,8 +123,8 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax3,
         x = 'Iteration',
         y = [
-            'Crosstrack Error w.r.t. Lookahead Waypoint',
             'Crosstrack Error w.r.t. Closest Waypoint',
+            'Crosstrack Error w.r.t. Lookahead Waypoint',
         ]
     )
     ax3.set_title('Crosstrack errors (steer control)')
@@ -137,8 +136,8 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax4,
         x = 'Iteration',
         y = [
-            'Heading Error w.r.t. Lookahead Waypoint',
             'Heading Error w.r.t. Closest Waypoint',
+            'Heading Error w.r.t. Lookahead Waypoint',
         ]
     )
     ax4.set_title('Heading errors (steer control)')
@@ -152,7 +151,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     """Plot recorded longitudinal control (throttle control) data."""
 
     # Define subplot layout
-    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1)
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, ncols=1)
 
     # Get first n_rows from throttle dataframe
     throttle_ctr_df2 = throttle_ctr_df[:num_rows]
@@ -167,9 +166,9 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
         y = [
             'Velocity Setpoint',
             'Actual Velocity',
-            'Velocity Error',
+            'Proportional Velocity Error',
             'Integral Velocity Error',
-            'Differential Velocity Error'
+            'Differential Velocity Error',
         ]
     )
     ax1.set_title('Throttle control errors')
@@ -205,6 +204,20 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     ax3.set_xlabel('Time [s]')
     ax3.set_ylabel('Throttle & brake output [1]')
 
+    # Plot velocity values
+    throttle_ctr_df2.plot(
+        ax = ax4,
+        x = 'Iteration',
+        y = [
+            'Actual Velocity',
+            'Planned Velocity (Closest Point)',
+            'Planned Velocity (Lookahead Point)',
+        ]
+    )
+    ax4.set_title('Velocity values (throttle control)')
+    ax4.set_xlabel('Time [s]')
+    ax4.set_ylabel('Velocity [m/s]')
+
     fig.suptitle('Longitudinal control (throttle control)')
 
 
@@ -223,8 +236,8 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         x = 'Iteration',
         y = [
             'Actual X-Position',
-            'Lookahead X-Waypoint',
             'Closest X-Waypoint',
+            'Lookahead X-Waypoint',
         ]
     )
     ax1.set_title('X-coordinates of actual and planned trajectory')
@@ -237,8 +250,8 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         x = 'Iteration',
         y = [
             'Actual Y-Position',
-            'Lookahead Y-Waypoint',
             'Closest Y-Waypoint',
+            'Lookahead Y-Waypoint',
         ]
     )
     ax2.set_title('Y-coordinates of actual and planned trajectory')
@@ -250,8 +263,8 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         ax = ax3,
         x = 'Iteration',
         y = [
-            'Distance to Lookahead Waypoint',
             'Distance to Closest Waypoint',
+            'Distance to Lookahead Waypoint',
         ]
     )
     ax3.set_title('Distances between actual position and planned path waypoints')
@@ -263,8 +276,8 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         x = 'Iteration',
         y = [
             'Actual Yaw',
-            'Yaw to Lookahead Waypoint',
             'Yaw to Closest Waypoint',
+            'Yaw to Lookahead Waypoint',
         ]
     )
     ax4.set_title('Heading deviation')
@@ -293,16 +306,6 @@ def plot_trajectories(steer_ctr_df, num_rows):
         color='black'
     )
 
-    # Plot planned trajectory w.r.t. to lookahead waypoint
-    steer_ctr_df2.plot(
-        ax = ax1,
-        x = 'Lookahead X-Waypoint',
-        y = [
-            'Lookahead Y-Waypoint',
-        ],
-        color='blue'
-    )
-
     # Plot planned trajectory w.r.t. to closest waypoint
     steer_ctr_df2.plot(
         ax = ax1,
@@ -314,6 +317,17 @@ def plot_trajectories(steer_ctr_df, num_rows):
     )
     ax1.set_xlabel('X-coordinate [m]')
     ax1.set_ylabel('Y-cooridnate [m]')
+
+    # Plot planned trajectory w.r.t. to lookahead waypoint
+    steer_ctr_df2.plot(
+        ax = ax1,
+        x = 'Lookahead X-Waypoint',
+        y = [
+            'Lookahead Y-Waypoint',
+        ],
+        color='blue'
+    )
+
     fig.suptitle('Actual and planned trajectories')
 
 
