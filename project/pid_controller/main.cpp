@@ -93,7 +93,7 @@ double distance_between_points(double x1, double y1, double x2, double y2) {
 
 
 // Find closest point on planned path segment to the current ego vehicle (player) position
-unsigned int find_closest_point_on_path_segment(double x_act, double y_act, vector<double>& x_path, vector<double>& y_path) {
+unsigned int find_closest_point_on_path_segment(vector<double>& x_path, vector<double>& y_path, double x_act, double y_act) {
   unsigned int idx_min_dist = 0;
   double min_dist = DBL_MAX;
   // Loop over all planned path segment points leaving out the last element
@@ -105,7 +105,7 @@ unsigned int find_closest_point_on_path_segment(double x_act, double y_act, vect
       min_dist = dist;
       // Update index of the waypoint closest to the current ego vehicle position
       idx_min_dist = idx;
-      }
+    }
   }
   return idx_min_dist;
 }
@@ -160,7 +160,7 @@ void path_planner(
 
   // Set target speed to zero on the final path segment if vehicle is supposed to stop
   if ( behavior == STOPPED ) {
-  	int max_points = 20;
+  	unsigned int max_points = 20;
   	double point_x = x_points[x_points.size()-1];
   	double point_y = y_points[x_points.size()-1];
   	while ( x_points.size() < max_points ) {
@@ -176,7 +176,7 @@ void path_planner(
 
   // Generate spiral path segments between ego state and goal state
   auto spirals = motion_planner.generate_spirals(ego_state, goal_set);
-D
+
   // Desired goal speed
   auto desired_speed = utils::magnitude(goal.velocity);
 
@@ -188,14 +188,14 @@ D
   }
 
   // Generate velocity profile for all spiral trajectories
-  for ( int i = 0; i < spirals.size(); i++ ) {
+  for ( unsigned int i = 0; i < spirals.size(); i++ ) {
     auto trajectory = motion_planner._velocity_profile_generator.generate_trajectory(
       spirals[i], desired_speed, ego_state, lead_car_state, behavior
     );
     vector<double> spiral_x;
     vector<double> spiral_y;
     vector<double> spiral_v;
-    for ( int j = 0; j < trajectory.size(); j++ ) {
+    for ( unsigned int j = 0; j < trajectory.size(); j++ ) {
       double point_x = trajectory[j].path_point.x;
       double point_y = trajectory[j].path_point.y;
       double velocity = trajectory[j].v;
@@ -255,11 +255,11 @@ void transform_path_to_ego_coordinates(
   // Simple 2D backtransformation from absolute into relative coordinates
   for ( unsigned int i = 0; i < x_points.size(); i++ ) {
     double u_abs = x_points[i] - x_position;
-    double v_abs = xypoints[i] - y_position;
+    double v_abs = y_points[i] - y_position;
     double u_rel = u_abs * cos(yaw) + v_abs * sin(yaw);
     double v_rel = u_abs * (-sin(yaw)) + v_abs * cos(yaw);
-    x_points_ego.push_back(spiral_x);
-    y_points_ego.push_back(spiral_y);
+    x_points_ego.push_back(u_rel);
+    y_points_ego.push_back(v_rel);
   }
 }
 
@@ -384,8 +384,8 @@ int main ()
         );
 
         // Define vectors for path segment transformed into ego vehicle coordinates
-        vector< vector<double> > x_points_ego;
-        vector< vector<double> > y_points_ego;
+        vector<double> x_points_ego;
+        vector<double> y_points_ego;
 
         // Convert next path segment into ego vehicle cooridnates
         transform_path_to_ego_coordinates(x_points_ego, y_points_ego, x_points, y_points, x_position, y_position, yaw);
@@ -400,14 +400,16 @@ int main ()
 
         // Calculate distance to lookahead waypoint
         double lookahead_wp_dist = distance_between_points(
-          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx];
+          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
+        );
 
         // Find closest point on planned path segment to the current ego vehicle (player) position
         unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, x_position, y_position);
 
         // Calculate distance to closest point on planned path segment
         double closest_wp_dist = distance_between_points(
-          x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx];
+          x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
+        );
 
         ////////////////////////////////////////////////////
         // Lateral motion control (steering control)
