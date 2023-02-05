@@ -79,10 +79,37 @@ template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
+
 // Calculate angle between x-axis (cartesian coordinates) and the line through points [x1, y1] and [x2, y2]
 double angle_between_points(double x1, double y1, double x2, double y2) {
   return atan2(y2-y1, x2-x1);
 }
+
+
+// Calculate distance between points in 2D space
+double distance_between_points(double x1, double y1, double x2, double y2) {
+  return sqrt(pow(y2-y1, 2) + pow(x2-x1, 2));
+}
+
+
+// Find closest point on planned path segment to the current ego vehicle (player) position
+unsigned int find_closest_point_on_path_segment(double x_act, double y_act, vector<double>& x_path, vector<double>& y_path) {
+  unsigned int idx_min_dist = 0;
+  double min_dist = DBL_MAX;
+  // Loop over all planned path segment points leaving out the last element
+  for ( unsigned int idx=0; idx<x_path.size()-1; ++idx ) {
+    // Calculate the distance of the current point on the planned path segment to the ego vehicle front axle position
+    double dist = sqrt(pow(x_path[idx] - x_act, 2) + pow(y_path[idx] - y_act, 2));
+    if (dist < min_dist) {
+      // Update minimum distance (absolute value)
+      min_dist = dist;
+      // Update index of the waypoint closest to the current ego vehicle position
+      idx_min_dist = idx;
+      }
+  }
+  return idx_min_dist;
+}
+
 
 // Declare and initialize Behavior Planner and all its class requirements
 BehaviorPlannerFSM behavior_planner(
@@ -93,8 +120,11 @@ BehaviorPlannerFSM behavior_planner(
 // Declare and initialized the Motion Planner and all its class requirements
 MotionPlanner motion_planner(P_NUM_PATHS, P_GOAL_OFFSET, P_ERR_TOLERANCE);
 
+
+// Define vector for obstacle positions plus obstacle flag
 bool have_obst = false;
 vector<State> obstacles;
+
 
 // Define Path Planner function
 void path_planner(
@@ -190,9 +220,11 @@ void path_planner(
 
 }
 
+
+// Function to set obstacle positions
 void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& obstacles, bool& obst_flag) {
 
-	for ( int i = 0; i < x_points.size(); i++ ) {
+	for ( unsigned int i = 0; i < x_points.size(); i++ ) {
 		State obstacle;
 		obstacle.location.x = x_points[i];
 		obstacle.location.y = y_points[i];
@@ -201,6 +233,7 @@ void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& o
 	obst_flag = true;
 
 }
+
 
 int main ()
 {
@@ -329,6 +362,17 @@ int main ()
         // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
         unsigned int lookahead_wp_idx = x_points.size()-1;
 
+        // Calculate distance to lookahead waypoint
+        double lookahead_wp_dist = distance_between_points(
+          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx];
+
+        // Find closest point on planned path segment to the current ego vehicle (player) position
+        unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, x_position, y_position);
+
+        // Calculate distance to closest point on planned path segment
+        double closest_wp_dist = distance_between_points(
+          x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx];
+
         ////////////////////////////////////////////////////
         // Lateral motion control (steering control)
         ////////////////////////////////////////////////////
@@ -340,11 +384,6 @@ int main ()
         // Calculate desired yaw angle from the current position to the lookahead waypoint on the planned trajectory
         double yaw_setpoint = angle_between_points(
           x_position, y_position, x_points[lookahead_wp_idx],y_points[lookahead_wp_idx]
-        );
-
-        // Calculate lookahead distance
-        double lookahead_dist = sqrt(
-          pow(x_points[lookahead_wp_idx] - x_position, 2) + pow(y_points[lookahead_wp_idx] - y_position, 2)
         );
 
         /**
@@ -384,6 +423,8 @@ int main ()
         file_steer  << " " << steer_control_output;
         file_steer  << " " << x_points[lookahead_wp_idx];
         file_steer  << " " << y_points[lookahead_wp_idx];
+        file_steer  << " " << x_points[closest_wp_idx];
+        file_steer  << " " << y_points[closest_wp_idx];
         file_steer  << " " << x_position;
         file_steer  << " " << y_position;
         file_steer  << " " << lookahead_dist << endl;
