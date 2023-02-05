@@ -48,7 +48,7 @@ public:
     * Delta time
     */
     double delta_t_;
-    double delta_t_min_ = 1.0e-9;  // prevent division by zero
+    double delta_t_min_ = 1.0e-6;  // prevent division by zero
 
     /*
     * Constructor
@@ -74,6 +74,11 @@ public:
     * Get the PID control command.
     */
     double GetControlCommand();
+
+    /*
+    * Get the PID control error gains.
+    */
+    vector<double> PID::GetErrorGains();
 
     /*
     * Get the PID control errors.

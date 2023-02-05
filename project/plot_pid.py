@@ -16,7 +16,7 @@ def read_steer_data():
         steer_file,
         delim_whitespace = True,
         header = None,
-        usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
+        usecols = [0 : 24]
     )
     steer_df.columns = [
         'Iteration',
@@ -25,6 +25,9 @@ def read_steer_data():
         'Proportional Steer Error',
         'Integral Steer Error',
         'Differential Steer Error',
+        'Proportional Steer Error Gain',
+        'Integral Steer Error Gain',
+        'Differential Steer Error Gain',
         'Steer Control Command',
         'Yaw to Lookahead Waypoint',
         'Yaw to Closest Waypoint',
@@ -52,15 +55,18 @@ def read_throttle_data():
     """Read recorded longitudinal control data."""
     throttle_file = 'throttle_pid_data.txt'
     throttle_df = pd.read_csv(
-        throttle_file, delim_whitespace = True, header = None, usecols = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        throttle_file, delim_whitespace = True, header = None, usecols = [0 : 13]
     )
     throttle_df.columns = [
         'Iteration',
         'Velocity Setpoint',
         'Actual Velocity',
-        'Velocity Error',
+        'Proportional Velocity Error',
         'Integral Velocity Error',
         'Differential Velocity Error',
+        'Proportional Throttle Error Gain',
+        'Integral Throttle Error Gain',
+        'Differential Throttle Error Gain',
         'Throttle Control Command',
         'Throttle Output',
         'Brake Output',
@@ -96,13 +102,18 @@ def plot_steer_data(steer_ctr_df, num_rows):
     )
     ax1.set_title('Steering control errors')
     ax1.set_xlabel('Time [s]')
-    ax1.set_ylabel('Steer error [--]')
+    ax1.set_ylabel('Steer error [-]')
 
     # Plot steering control ouptut
     steer_ctr_df2.plot(
         ax = ax2,
         x = 'Iteration',
-        y = 'Steer Control Command'
+        y = [
+            'Proportional Steer Error Gain',
+            'Integral Steer Error Gain',
+            'Differential Steer Error Gain',
+            'Steer Control Command',
+        ]
     )
     ax2.set_title('Steer control command')
     ax2.set_xlabel('Time [s]')
@@ -141,7 +152,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     """Plot recorded longitudinal control (throttle control) data."""
 
     # Define subplot layout
-    fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1)
 
     # Get first n_rows from throttle dataframe
     throttle_ctr_df2 = throttle_ctr_df[:num_rows]
@@ -149,7 +160,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     print('throttle_df2.columns')
     print(throttle_ctr_df2.columns)
 
-    # Plot velocity control errors
+    # Plot throttle control errors
     throttle_ctr_df2.plot(
         ax = ax1,
         x = 'Iteration',
@@ -163,11 +174,26 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     )
     ax1.set_title('Throttle control errors')
     ax1.set_xlabel('Time [s]')
-    ax1.set_ylabel('Throttle and brake output [1]')
+    ax1.set_ylabel('Velocity control errors [m/s]')
 
     # Plot throttle control ouptut
     throttle_ctr_df2.plot(
         ax = ax2,
+        x = 'Iteration',
+        y = [
+            'Proportional Throttle Error Gain',
+            'Integral Throttle Error Gain',
+            'Differential Throttle Error Gain',
+            'Throttle Control Command',
+        ]
+    )
+    ax2.set_title('Throttle control command')
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel('Throttle control output [1]')
+
+    # Plot throttle & brake control ouptut
+    throttle_ctr_df2.plot(
+        ax = ax3,
         x = 'Iteration',
         y = [
             'Throttle Control Command',
@@ -175,9 +201,9 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
             'Brake Output',
         ]
     )
-    ax2.set_title('Throttle & brake control command')
-    ax2.set_xlabel('Time [s]')
-    ax2.set_ylabel('Throttle & brake output [1]')
+    ax3.set_title('Throttle & brake control command')
+    ax3.set_xlabel('Time [s]')
+    ax3.set_ylabel('Throttle & brake output [1]')
 
     fig.suptitle('Longitudinal control (throttle control)')
 

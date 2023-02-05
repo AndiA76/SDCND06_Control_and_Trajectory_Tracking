@@ -444,8 +444,9 @@ int main ()
         /**
         * Step 3): Update steering control given the current heading and the desired heading on the planned trajectory
         **/
-        // Define vector to hold the pid steer control errors
+        // Define vector to hold the pid steer control errors and error gains
         vector<double> pid_steer_errors;
+        vector<double> pid_steer_error_gains;
 
         // Define set point for steering control variable (select control variable)
         double steer_setpoint = yaw_closest_wp;
@@ -464,13 +465,19 @@ int main ()
         // Get PID steer control command
         double steer_output = pid_steer.GetControlCommand();
 
-        // Get PID steer control errors
+        // Get PID steer control errors and error gains
         pid_steer_errors = pid_steer.GetErrors();
+        pid_steer_error_gains = pid_steer.GetErrorGains();
 
         // Decompose pid steer error vector
         double prop_steer_error = pid_steer_errors[0];
         double int_steer_error = pid_steer_errors[1];
         double diff_steer_error = pid_steer_errors[2];
+
+        // Decompose pid steer error gain vector
+        double prop_steer_error_gain = pid_steer_error_gains[0];
+        double int_steer_error_gain = pid_steer_error_gains[1];
+        double diff_steer_error_gain = pid_steer_error_gains[2];
 
         // Save lateral control data
         file_steer.seekg(std::ios::beg);
@@ -483,6 +490,9 @@ int main ()
         file_steer << " " << prop_steer_error;
         file_steer << " " << int_steer_error;
         file_steer << " " << diff_steer_error;
+        file_steer << " " << prop_steer_error_gain;
+        file_steer << " " << int_steer_error_gain;
+        file_steer << " " << diff_steer_error_gain;
         file_steer << " " << steer_output;
         file_steer << " " << yaw_lookahead_wp;
         file_steer << " " << yaw_closest_wp;
@@ -519,8 +529,9 @@ int main ()
         /**
         * Step 3): Update throttle control given the current velocity and the desired velocity on the planned trajectory
         **/
-        // Define vector to hold the pid throttle control errors
+        // Define vector to hold the pid throttle control errors and error gains
         vector<double> pid_throttle_errors;
+        vector<double> pid_throttle_error_gains;
 
         // Update the delta time with the previous command
         pid_throttle.UpdateDeltaTime(new_delta_time);
@@ -531,13 +542,19 @@ int main ()
         // Get PID throttle control command
         double throttle_ctrl_cmd = pid_throttle.GetControlCommand();
 
-        // Get PID throttle control errors
+        // Get PID throttle control errors and error gains
         pid_throttle_errors = pid_throttle.GetErrors();
+        pid_throttle_error_gains = pid_throttle.GetErrorGains();
 
         // Decompose pid throttle error vector
         double prop_velocity_error = pid_throttle_errors[0];
         double int_velocity_error = pid_throttle_errors[1];
         double diff_velocity_error = pid_throttle_errors[2];
+
+        // Decompose pid throttle error gain vector
+        double prop_throttle_error_gain = pid_throttle_error_gains[0];
+        double int_throttle_error_gain = pid_throttle_error_gains[1];
+        double diff_throttle_error_gain = pid_throttle_error_gains[2];
 
         // Define throttle and brake control commands
         double throttle_output, brake_output;
@@ -562,6 +579,9 @@ int main ()
         file_throttle << " " << prop_velocity_error;
         file_throttle << " " << int_velocity_error;
         file_throttle << " " << diff_velocity_error;
+        file_throttle << " " << prop_throttle_error_gain;
+        file_throttle << " " << int_throttle_error_gain;
+        file_throttle << " " << diff_throttle_error_gain;
         file_throttle << " " << throttle_ctrl_cmd;
         file_throttle << " " << throttle_output;
         file_throttle << " " << brake_output;

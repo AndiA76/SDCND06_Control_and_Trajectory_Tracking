@@ -79,9 +79,19 @@ double PID::GetControlCommand() {
    return control_output_;
 }
 
+vector<double> PID::GetErrorGains() {
+   /**
+   * Get the PID control error gains as a vector<double> = {Kp_ * curr_err_, Ki_ * int_error_, Kd_ * diff_error_}
+   * 
+   * Remark: Except for the I-component the PID errors are not clipped if saturation occurs!
+   */
+   vector<double> output_errors_gains_ = {Kp_ * curr_error_, Ki_ * int_error_, Kd_ * diff_error_};
+   return output_errors_gains_;
+}
+
 vector<double> PID::GetErrors() {
    /**
-   * Get the PID errors as a vector<double> = {curr_err, int_error_, diff_error_}
+   * Get the PID errors as a vector<double> = {curr_err_, int_error_, diff_error_}
    */
    vector<double> output_errors_ = {curr_error_, int_error_, diff_error_};
    return output_errors_;
