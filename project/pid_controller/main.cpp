@@ -126,7 +126,7 @@ bool have_obst = false;
 vector<State> obstacles;
 
 
-// Define Path Planner function
+// Path segment planner
 void path_planner(
   vector<double>& x_points, vector<double>& y_points, vector<double>& v_points,
   double yaw, double velocity, State goal, bool is_junction, string tl_state,
@@ -136,10 +136,12 @@ void path_planner(
 
   State ego_state;
 
+  // Initialize ego vehicle position and velocity based on last point on the driven trajectory
   ego_state.location.x = x_points[x_points.size()-1];
   ego_state.location.y = y_points[y_points.size()-1];
   ego_state.velocity.x = velocity;
 
+  // Estimatate current ego vehicle yaw angle
   if ( x_points.size() > 1 ) {
   	ego_state.rotation.yaw = angle_between_points(
       x_points[x_points.size()-2], y_points[y_points.size()-2],
@@ -150,10 +152,13 @@ void path_planner(
   		ego_state.rotation.yaw = yaw;
   }
 
+  // Get new maneuver from behavior planner
   Maneuver behavior = behavior_planner.get_active_maneuver();
 
+  // Set goal point based on state transition for the new maneuver
   goal = behavior_planner.state_transition(ego_state, goal, is_junction, tl_state);
 
+  // Set target speed to zero on the final path segment if vehicle is supposed to stop
   if ( behavior == STOPPED ) {
   	int max_points = 20;
   	double point_x = x_points[x_points.size()-1];
@@ -166,10 +171,13 @@ void path_planner(
   	return;
   }
 
+  // Generate offset goal state
   auto goal_set = motion_planner.generate_offset_goals(goal);
 
+  // Generate spiral path segments between ego state and goal state
   auto spirals = motion_planner.generate_spirals(ego_state, goal_set);
-
+D
+  // Desired goal speed
   auto desired_speed = utils::magnitude(goal.velocity);
 
   State lead_car_state;  // = to the vehicle ahead...
@@ -179,6 +187,7 @@ void path_planner(
   	return;
   }
 
+  // Generate velocity profile for all spiral trajectories
   for ( int i = 0; i < spirals.size(); i++ ) {
     auto trajectory = motion_planner._velocity_profile_generator.generate_trajectory(
       spirals[i], desired_speed, ego_state, lead_car_state, behavior
@@ -199,12 +208,14 @@ void path_planner(
     spirals_v.push_back(spiral_v);
   }
 
+  // Get the best spiral trajectory avoiding collisions with obstacles
   best_spirals = motion_planner.get_best_spiral_idx(spirals, obstacles, goal);
   int best_spiral_idx = -1;
 
   if ( best_spirals.size() > 0 ) 
   	best_spiral_idx = best_spirals[best_spirals.size()-1];
 
+  // Generate waypoints for next path segment based on best trajectory
   int index = 0;
   int max_points = 20;
   int add_points = spirals_x[best_spiral_idx].size();
@@ -221,7 +232,7 @@ void path_planner(
 }
 
 
-// Function to set obstacle positions
+// Set obstacle positions
 void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& obstacles, bool& obst_flag) {
 
 	for ( unsigned int i = 0; i < x_points.size(); i++ ) {
@@ -232,6 +243,24 @@ void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& o
 	}
 	obst_flag = true;
 
+}
+
+
+// Transform planned path segments into the ego vehicle's coordinate system
+void transform_path_to_ego_coordinates(
+  vector<double>& x_points_ego, vector<double>& y_points_ego,
+  vector<double>& x_points, vector<double>& y_points,
+  double x_position, double y_position, double yaw
+) {
+  // Simple 2D backtransformation from absolute into relative coordinates
+  for ( unsigned int i = 0; i < x_points.size(); i++ ) {
+    double u_abs = x_points[i] - x_position;
+    double v_abs = xypoints[i] - y_position;
+    double u_rel = u_abs * cos(yaw) + v_abs * sin(yaw);
+    double v_rel = u_abs * (-sin(yaw)) + v_abs * cos(yaw);
+    x_points_ego.push_back(spiral_x);
+    y_points_ego.push_back(spiral_y);
+  }
 }
 
 
@@ -347,12 +376,19 @@ int main ()
         vector< vector<double> > spirals_v;
         vector<int> best_spirals;
 
-        // Path planning using spiral interpolation of the planned waypoints
+        // Plan next path segment using spiral interpolation between the planned waypoints
         path_planner(
           x_points, y_points, v_points,
           yaw, velocity, goal, is_junction, tl_state,
           spirals_x, spirals_y, spirals_v, best_spirals
         );
+
+        // Define vectors for path segment transformed into ego vehicle coordinates
+        vector< vector<double> > x_points_ego;
+        vector< vector<double> > y_points_ego;
+
+        // Convert next path segment into ego vehicle cooridnates
+        transform_path_to_ego_coordinates(x_points_ego, y_points_ego, x_points, y_points, x_position, y_position, yaw);
 
         // Save time and compute delta time
         time(&timer);
@@ -391,6 +427,12 @@ int main ()
           x_position, y_position, x_points[closest_wp_idx],y_points[closest_wp_idx]
         );
 
+        // Get crosstrack error w.r.t. to the lookahed waypoint on the planned trajectory
+        double cte_lookahead_wp = y_points_ego[lookahead_wp_idx];
+
+        // Get crosstrack error w.r.t. to the closest waypoint on the planned trajectory
+        double cte_closest_wp = y_points_ego[closest_wp_idx];
+
         /**
         * Step 3): Update steering control given the current heading and the desired heading on the planned trajectory
         **/
@@ -426,6 +468,8 @@ int main ()
         file_steer << " " << int_headling_error;
         file_steer << " " << diff_headling_error;
         file_steer << " " << steer_output;
+        file_steer << " " << cte_lookahead_wp;
+        file_steer << " " << cte_closest_wp;
         file_steer << " " << x_position;
         file_steer << " " << y_position;
         file_steer << " " << x_points[lookahead_wp_idx];
