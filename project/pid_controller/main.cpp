@@ -403,6 +403,8 @@ int main ()
           x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
         );
 
+        // Define a lookahead especially to stabilize lateral pid control for a non-linear dynamic system (ref. bicycle model)
+
         // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
         // unsigned int lookahead_wp_idx = x_points.size()-1;
         unsigned int lookahead_wp_idx = closest_wp_idx + 2;

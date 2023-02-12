@@ -5,16 +5,20 @@
 #       Author: Andreas Albrecht
 # **********************************************
 
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
+
+#FILEPATH = 'experiments/test_cte_07/'
+FILEPATH = 'experiments/test_yaw_02/'
 
 
 def read_steer_data():
     """Read recorded lateral control data."""
-    steer_file = 'steer_pid_data.txt'
-    cols = pd.read_csv(steer_file, delim_whitespace = True, nrows = 1).columns
+    steer_filepath = os.path.join(FILEPATH, 'steer_pid_data.txt')
+    cols = pd.read_csv(steer_filepath, delim_whitespace = True, nrows = 1).columns
     steer_df = pd.read_csv(
-        steer_file, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
+        steer_filepath, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
     )
     steer_df.columns = [
         'Iteration',
@@ -51,10 +55,10 @@ def read_steer_data():
 
 def read_throttle_data():
     """Read recorded longitudinal control data."""
-    throttle_file = 'throttle_pid_data.txt'
-    cols = pd.read_csv(throttle_file, delim_whitespace = True, nrows = 1).columns
+    throttle_filepath = os.path.join(FILEPATH, 'throttle_pid_data.txt')
+    cols = pd.read_csv(throttle_filepath, delim_whitespace = True, nrows = 1).columns
     throttle_df = pd.read_csv(
-        throttle_file, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
+        throttle_filepath, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
     )
     throttle_df.columns = [
         'Iteration',
@@ -100,7 +104,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ]
     )
     ax1.set_title('Steering control errors')
-    ax1.set_xlabel('Time [s]')
+    ax1.set_xlabel('')
     ax1.set_ylabel('Steer error [-]')
 
     # Plot steering control ouptut
@@ -115,7 +119,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ]
     )
     ax2.set_title('Steer control command')
-    ax2.set_xlabel('Time [s]')
+    ax2.set_xlabel('')
     ax2.set_ylabel('Steer control output [1]')
 
     # Plot crosstrack error
@@ -128,7 +132,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ]
     )
     ax3.set_title('Crosstrack errors (steer control)')
-    ax3.set_xlabel('Time [s]')
+    ax3.set_xlabel('')
     ax3.set_ylabel('Crosstrack error [m]')
 
     # Plot heading errors
@@ -144,7 +148,10 @@ def plot_steer_data(steer_ctr_df, num_rows):
     ax4.set_xlabel('Time [s]')
     ax4.set_ylabel('Heading error [rad]')
 
+    # Set higher-level title of the figure
     fig.suptitle('Lateral control (steer control)')
+    # Avoid overlapping of titles and axis labels in subplots
+    plt.subplots_adjust(hspace=0.35)
 
 
 def plot_throttle_data(throttle_ctr_df, num_rows):
@@ -172,7 +179,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
         ]
     )
     ax1.set_title('Throttle control errors')
-    ax1.set_xlabel('Time [s]')
+    ax1.set_xlabel('')
     ax1.set_ylabel('Velocity control errors [m/s]')
 
     # Plot throttle control ouptut
@@ -187,7 +194,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
         ]
     )
     ax2.set_title('Throttle control command')
-    ax2.set_xlabel('Time [s]')
+    ax2.set_xlabel('')
     ax2.set_ylabel('Throttle control output [1]')
 
     # Plot throttle & brake control ouptut
@@ -201,7 +208,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
         ]
     )
     ax3.set_title('Throttle & brake control command')
-    ax3.set_xlabel('Time [s]')
+    ax3.set_xlabel('')
     ax3.set_ylabel('Throttle & brake output [1]')
 
     # Plot velocity values
@@ -218,7 +225,10 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     ax4.set_xlabel('Time [s]')
     ax4.set_ylabel('Velocity [m/s]')
 
+    # Set higher-level title of the figure
     fig.suptitle('Longitudinal control (throttle control)')
+    # Avoid overlapping of titles and axis labels in subplots
+    plt.subplots_adjust(hspace=0.35)
 
 
 def plot_path_coordinates(steer_ctr_df, num_rows):
@@ -241,7 +251,7 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         ]
     )
     ax1.set_title('X-coordinates of actual and planned trajectory')
-    ax1.set_xlabel('Time [s]')
+    ax1.set_xlabel('')
     ax1.set_ylabel('X-cooridnate in [m]')
 
     # Plot y-coordinates of actual and planned path
@@ -255,7 +265,7 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         ]
     )
     ax2.set_title('Y-coordinates of actual and planned trajectory')
-    ax2.set_xlabel('Time [s]')
+    ax2.set_xlabel('')
     ax2.set_ylabel('Y-cooridnate in [m]')
 
     # Plot distances between actual position and planned path waypoints
@@ -268,7 +278,7 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         ]
     )
     ax3.set_title('Distances between actual position and planned path waypoints')
-    ax3.set_xlabel('Time [s]')
+    ax3.set_xlabel('')
     ax3.set_ylabel('Distance in [m]')
 
     steer_ctr_df2.plot(
@@ -284,7 +294,10 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
     ax4.set_xlabel('Time [s]')
     ax4.set_ylabel('Heading direction [rad]')
 
+    # Set higher-level title of the figure
     fig.suptitle('Path coordinates of actual and planned trajectories')
+    # Avoid overlapping of titles and axis labels in subplots
+    plt.subplots_adjust(hspace=0.35)
 
 
 def plot_trajectories(steer_ctr_df, num_rows):
@@ -328,6 +341,7 @@ def plot_trajectories(steer_ctr_df, num_rows):
         color='blue'
     )
 
+    # Set higher-level title of the figure
     fig.suptitle('Actual and planned trajectories')
 
 
