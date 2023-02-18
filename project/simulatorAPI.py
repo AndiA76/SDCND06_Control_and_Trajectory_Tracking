@@ -163,7 +163,7 @@ class World(object):
 
     def get_waypoint(self, pos_x, pos_y):
         global _prev_junction_id, _tl_state, _road_height, _road_pitch, _road_roll
-        position = carla.Location(x= pos_x, y= pos_y)
+        position = carla.Location(x=pos_x, y=pos_y)
         waypoint = self.map.get_waypoint(position, project_to_road=True, lane_type=(carla.LaneType.Driving))
         _road_height = waypoint.transform.location.z
         _road_pitch = waypoint.transform.rotation.pitch
@@ -175,7 +175,7 @@ class World(object):
             if self.player.is_at_traffic_light():
 
                  #Change a red traffic light to green
-                traffic_light =  self.player.get_traffic_light()
+                traffic_light = self.player.get_traffic_light()
                 if traffic_light.get_state() == carla.TrafficLightState.Red:
                     traffic_light.set_state(carla.TrafficLightState.Green)
                     traffic_light.set_green_time(4.0)
@@ -255,23 +255,23 @@ class World(object):
             if len(way_points) > 1:
                 yaw = math.atan2(way_points[1].location.y-way_points[0].location.y, way_points[1].location.x-way_points[0].location.x)
                 velocity = v_points[0]
-                if velocity < 0.01 or _active_maneuver == 3:
+                if velocity < 0.01 or _active_maneuver == 3:  # vehicle stops (behavior == STOPPED)
                     yaw = _prev_yaw
                     way_points.pop(0)
                     v_points.pop(0)
-                else:
+                else:  # vehicle moves
                     _prev_yaw = yaw
-                    D = velocity * delta_t
-                    d_interval = math.sqrt((way_points[1].location.x - way_points[0].location.x)**2 + (way_points[1].location.y - way_points[0].location.y)**2)
-                    while d_interval < D and len(way_points) > 2:
-                        D -= d_interval
+                    driven_distance = velocity * delta_t
+                    distance_interval = math.sqrt((way_points[1].location.x - way_points[0].location.x)**2 + (way_points[1].location.y - way_points[0].location.y)**2)
+                    while distance_interval < driven_distance and len(way_points) > 2:
+                        driven_distance -= distance_interval
                         way_points.pop(0)
                         v_points.pop(0)
-                        d_interval = math.sqrt((way_points[1].location.x - way_points[0].location.x)**2 + (way_points[1].location.y - way_points[0].location.y)**2)
-                    if abs(d_interval) < 1e-6:
+                        distance_interval = math.sqrt((way_points[1].location.x - way_points[0].location.x)**2 + (way_points[1].location.y - way_points[0].location.y)**2)
+                    if abs(distance_interval) < 1e-6:
                         yaw = 0.
                     else:
-                        ratio = D / d_interval
+                        ratio = driven_distance / distance_interval
                         v_points[0] = ratio * (v_points[1]-v_points[0]) + v_points[0]
                         way_points[0].location.x = ratio * (way_points[1].location.x - way_points[0].location.x) + way_points[0].location.x
                         way_points[0].location.y = ratio * (way_points[1].location.y - way_points[0].location.y) + way_points[0].location.y
@@ -289,7 +289,7 @@ class World(object):
                 _view_yaw += _view_yaw_change
                 _view_pitch += _view_pitch_change
                 _view_radius += _view_radius_change
-                _view_radius = min( max(10, _view_radius), 100)
+                _view_radius = min(max(10, _view_radius), 100)
                 while _view_yaw < -math.pi:
                     _view_yaw += math.pi
                 while _view_yaw > math.pi:
@@ -298,8 +298,8 @@ class World(object):
                     _view_pitch += math.pi
                 while _view_pitch > math.pi:
                     _view_pitch -= math.pi
-                _pivot.rotation.yaw  = _view_yaw * 180 / math.pi
-                _pivot.rotation.pitch  = _view_pitch * 180 / math.pi
+                _pivot.rotation.yaw = _view_yaw * 180 / math.pi
+                _pivot.rotation.pitch = _view_pitch * 180 / math.pi
                 _pivot.location.z += 2 + _view_radius * math.sin(math.pi + _view_pitch)
                 # Teleports the actor to a given transform (location and rotation):
 #                 self.player.set_transform(way_points[0])
@@ -853,18 +853,46 @@ def game_loop(args):
 
                 x_points = [point.location.x for point in way_points]
                 y_points = [point.location.y for point in way_points]
-                yaw = way_points[0].rotation.yaw * math.pi / 180
+                # yaw = way_points[0].rotation.yaw * math.pi / 180
                 waypoint_x, waypoint_y, waypoint_t, waypoint_j = world.get_waypoint(x_points[-1], y_points[-1])
+
+                # get actual velocity of the ego vehicle
                 real_v = world.player.get_velocity()
                 velocity = math.sqrt(real_v.x**2 + real_v.y**2)
-                print('velocity sent: ', velocity)
+                print(f'velocity sent: {velocity}')
 
+                # get actual location of the ego vehicle
                 t = world.player.get_transform()
                 location_x = t.location.x
                 location_y = t.location.y
                 location_z = t.location.z
+                print(f'location set: [{location_x}, {location_y}, {location_z}]')
 
-                ws.send(json.dumps({'traj_x': x_points, 'traj_y': y_points, 'traj_v': v_points ,'yaw': _prev_yaw, "velocity": velocity, 'time': sim_time, 'waypoint_x': waypoint_x, 'waypoint_y': waypoint_y, 'waypoint_t': waypoint_t, 'waypoint_j': waypoint_j, 'tl_state': _tl_state, 'obst_x': obst_x, 'obst_y': obst_y, 'location_x': location_x, 'location_y': location_y, 'location_z': location_z } ))
+                # get actual heading (yaw angle) of the ego vehicle
+                yaw = t.rotation.yaw * math.pi / 180
+
+                ws.send(
+                    json.dumps(
+                        {
+                            'traj_x': x_points,
+                            'traj_y': y_points,
+                            'traj_v': v_points,                            
+                            'yaw': yaw,  #'yaw': _prev_yaw,
+                            "velocity": velocity,
+                            'time': sim_time,
+                            'waypoint_x': waypoint_x,
+                            'waypoint_y': waypoint_y,
+                            'waypoint_t': waypoint_t,
+                            'waypoint_j': waypoint_j,
+                            'tl_state': _tl_state,
+                            'obst_x': obst_x,
+                            'obst_y': obst_y,
+                            'location_x': location_x,
+                            'location_y': location_y,
+                            'location_z': location_z
+                        }
+                    )
+                )
 
             clock.tick_busy_loop(60)
             world.tick(clock)
@@ -896,7 +924,7 @@ def game_loop(args):
 def get_data():
     global way_points, v_points, update_cycle, spirals_x, spirals_y, spirals_v, spiral_idx, _active_maneuver, steer, throttle, brake
     data = ws.recv() # blocking call, thats why we use asyncio
-    data = json.loads(str(data))
+    data = json.loads(str(data)) # load data from message (json format)
     dist_thresh = 0.1
     closest_dist = 1000
     start_index = 0
@@ -916,7 +944,7 @@ def get_data():
     print('brake: ', brake)
 
     # Start at the point that is closest to the start way point
-    if( len(way_points) > 1):
+    if(len(way_points) > 1):
         for path_index in range(len(data['trajectory_x'])):
 
             new_x = data['trajectory_x'][path_index]
@@ -931,7 +959,7 @@ def get_data():
             if path_index is len(data['trajectory_x'])-1:
                 print("WARNING: distance start threshold not met ", closest_dist)
 
-    #print("start index ", start_index) # test if start_index is moving
+    print(f'start index: {start_index}') # test if start_index is moving
 
     x_set = data['trajectory_x'][start_index:]
     y_set = data['trajectory_y'][start_index:]

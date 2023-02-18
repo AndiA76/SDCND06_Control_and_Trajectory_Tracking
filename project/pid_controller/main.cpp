@@ -92,25 +92,6 @@ double distance_between_points(double x1, double y1, double x2, double y2) {
 }
 
 
-// Find closest point on planned path segment to the current ego vehicle (player) position
-unsigned int find_closest_point_on_path_segment(vector<double>& x_path, vector<double>& y_path, double x_act, double y_act) {
-  unsigned int idx_min_dist = 0;
-  double min_dist = DBL_MAX;
-  // Loop over all planned path segment points leaving out the last element
-  for ( unsigned int idx=0; idx<x_path.size()-1; ++idx ) {
-    // Calculate the distance of the current point on the planned path segment to the ego vehicle front axle position
-    double dist = sqrt(pow(x_path[idx] - x_act, 2) + pow(y_path[idx] - y_act, 2));
-    if (dist < min_dist) {
-      // Update minimum distance (absolute value)
-      min_dist = dist;
-      // Update index of the waypoint closest to the current ego vehicle position
-      idx_min_dist = idx;
-    }
-  }
-  return idx_min_dist;
-}
-
-
 // Declare and initialize Behavior Planner and all its class requirements
 BehaviorPlannerFSM behavior_planner(
       P_LOOKAHEAD_TIME, P_LOOKAHEAD_MIN, P_LOOKAHEAD_MAX, P_SPEED_LIMIT,
@@ -129,7 +110,8 @@ vector<State> obstacles;
 // Path segment planner
 void path_planner(
   vector<double>& x_points, vector<double>& y_points, vector<double>& v_points,
-  double yaw, double velocity, State goal, bool is_junction, string tl_state,
+  double x_position, double y_position, double yaw, double velocity,
+  State goal, bool is_junction, string tl_state,
   vector< vector<double> >& spirals_x, vector< vector<double> >& spirals_y,
   vector< vector<double> >& spirals_v, vector<int>& best_spirals
 ) {
@@ -137,20 +119,24 @@ void path_planner(
   State ego_state;
 
   // Initialize ego vehicle position and velocity based on last point on the driven trajectory
-  ego_state.location.x = x_points[x_points.size()-1];
-  ego_state.location.y = y_points[y_points.size()-1];
+  //ego_state.location.x = x_points[x_points.size()-1];
+  //ego_state.location.y = y_points[y_points.size()-1];
+  ego_state.location.x = x_position;
+  ego_state.location.y = y_position;
   ego_state.velocity.x = velocity;
 
   // Estimatate current ego vehicle yaw angle
-  if ( x_points.size() > 1 ) {
-  	ego_state.rotation.yaw = angle_between_points(
-      x_points[x_points.size()-2], y_points[y_points.size()-2],
-      x_points[x_points.size()-1], y_points[y_points.size()-1]
-    );
-  	ego_state.velocity.x = v_points[v_points.size()-1];
-  	if(velocity < 0.01)
-  		ego_state.rotation.yaw = yaw;
-  }
+  //if ( x_points.size() > 1 ) {
+  //	ego_state.rotation.yaw = angle_between_points(
+  //    x_points[x_points.size()-2], y_points[y_points.size()-2],
+  //    x_points[x_points.size()-1], y_points[y_points.size()-1]
+  //  );
+  //	ego_state.velocity.x = v_points[v_points.size()-1];
+  //	if(velocity < 0.01)
+  //		ego_state.rotation.yaw = yaw;
+  //}
+  // Get current ego vehicle heading (yaw angle)
+  ego_state.rotation.yaw = yaw;
 
   // Get new maneuver from behavior planner
   Maneuver behavior = behavior_planner.get_active_maneuver();
@@ -264,6 +250,46 @@ void transform_path_to_ego_coordinates(
 }
 
 
+// Find closest waypoint on path segment in driving direction using ego coordinates
+unsigned int find_next_waypoint_in_ego_coordinates(vector<double>& x_path_ego, vector<double>& y_path_ego) {
+  unsigned int idx_min_dist = 0;
+  double min_dist = DBL_MAX;
+  // Loop over all path segment points with a positive x-coordinate
+  for ( unsigned int idx=0; idx<x_path_ego.size(); ++idx ) {
+    if ( x_path_ego[idx] > 0 ) {
+      // Calculate the distance of the current point on the path segment to the reference point
+      double dist = distance_between_points(x_path_ego[idx], y_path_ego[idx], 0.0, 0.0);
+      if (dist < min_dist) {
+        // Update minimum distance (absolute value)
+        min_dist = dist;
+        // Update index of the waypoint closest to the reference point
+        idx_min_dist = idx;
+      }
+    }
+  }
+  return idx_min_dist;
+}
+
+
+// Find closest point on a path segment to a given reference position using absolute coordinates
+unsigned int find_closest_point_on_path_segment(vector<double>& x_path, vector<double>& y_path, double x_ref, double y_ref) {
+  unsigned int idx_min_dist = 0;
+  double min_dist = DBL_MAX;
+  // Loop over all path segment points
+  for ( unsigned int idx=0; idx<x_path.size(); ++idx ) {
+    // Calculate the distance of the current point on the path segment to the reference point
+    double dist = distance_between_points(x_path[idx], y_path[idx], x_ref, y_ref);
+    if (dist < min_dist) {
+      // Update minimum distance (absolute value)
+      min_dist = dist;
+      // Update index of the waypoint closest to the reference point
+      idx_min_dist = idx;
+    }
+  }
+  return idx_min_dist;
+}
+
+
 int main ()
 {
   // Start uWebSocket Server
@@ -290,30 +316,62 @@ int main ()
   double new_delta_time;
 
   /**
-  * (Step 1): Create pid (pid_steer) steer controller for longitudinal motion control
+  * (Step 1): Create PID (pid_steer) steer controller for longitudinal motion control
   **/
   PID pid_steer = PID();
-  // Initialize pid steer controller for lateral motion control
+  // Set PID steer control parameters
   double Kp_steer = 0.18; // 0.21; // 0.3;
   double Ki_steer = 0.008; // 0.001; // 0.01;
   double Kd_steer = 0.28; // 0.1; // 0.3; // 0.6;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
-  double int_errot_0_steer = 0.0;
-  pid_steer.Init(Kp_steer, Ki_steer, Kd_steer, output_lim_max_steer, output_lim_min_steer, int_errot_0_steer);
+  double int_win_min_steer = -0.6;
+  double int_win_max_steer = 0.6;
+  double delta_t_min_steer = 1.0e-3;
+  double initial_steer_error = 0.0;
+  // Initialize PID steer controller for lateral motion control
+  pid_steer.Init(
+    Kp_steer,
+    Ki_steer,
+    Kd_steer,
+    output_lim_min_steer,
+    output_lim_max_steer,
+    int_win_min_steer,
+    int_win_max_steer,
+    delta_t_min_steer,
+    initial_steer_error
+  );
 
   /**
-  * (Step 1): create pid (pid_throttle) for throttle control command and initialize values
+  * (Step 1): Create PID (pid_throttle) for throttle control command and initialize values
   **/
   PID pid_throttle = PID();
-  // Initialize pid throttle controller for longitudinal motion control
+  // Set PID throttle control parameters
   double Kp_throttle = 0.17; // 0.5; // 0.3 // 0.25;
   double Ki_throttle = 0.004; // 0.02; // 0.001; // 0.0009;
   double Kd_throttle = 0.0; // 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
-  double int_error_0_throttle = 0.0;
-  pid_throttle.Init(Kp_throttle, Ki_throttle, Kd_throttle, output_lim_max_throttle, output_lim_min_throttle, int_error_0_throttle);
+  double int_win_min_throttle = -0.5;
+  double int_win_max_throttle = 0.5;
+  double delta_t_min_throttle = 1e-3;
+  double intial_throttle_error = 0.0;
+  // Initialize PID throttle controller for longitudinal motion control
+  pid_throttle.Init(
+    Kp_throttle,
+    Ki_throttle,
+    Kd_throttle,
+    output_lim_min_throttle,
+    output_lim_max_throttle,
+    int_win_min_throttle,
+    int_win_max_throttle,
+    delta_t_min_throttle,
+    intial_throttle_error
+  );
+
+  // Define whether to control on a lookahead waypoint or on the closest waypoint ahead
+  bool USE_LOOKAHEAD_WP = false;
+  bool USE_CTE = false;
 
   // Execute control cycle on receiving a new message from SimulationAPI
   h.onMessage(
@@ -344,7 +402,7 @@ int main ()
         double velocity = data["velocity"];
         // Actual simulation time
         double sim_time = data["time"];
-        // Planned waypoints
+        // Next planned waypoint
         double waypoint_x = data["waypoint_x"];
         double waypoint_y = data["waypoint_y"];
         double waypoint_t = data["waypoint_t"];
@@ -364,22 +422,23 @@ int main ()
           set_obst(x_obst, y_obst, obstacles, have_obst);
         }
 
-        // Goal state derived from the planned waypoints
+        // Set goal state based on the next planned waypoint
         State goal;
         goal.location.x = waypoint_x;
         goal.location.y = waypoint_y;
         goal.rotation.yaw = waypoint_t;
 
-        // Define vectors for spline interpolation of the planned trajectory given by the waypoints
+        // Define vectors for the spiral trajectory variants to the next target waypoint
         vector< vector<double> > spirals_x;
         vector< vector<double> > spirals_y;
         vector< vector<double> > spirals_v;
         vector<int> best_spirals;
 
-        // Plan next path segment using spiral interpolation between the planned waypoints
+        // Plan next path segment using spiral interpolation to the next target waypoint
         path_planner(
           x_points, y_points, v_points,
-          yaw, velocity, goal, is_junction, tl_state,
+          x_position, y_position, yaw, velocity,
+          goal, is_junction, tl_state,
           spirals_x, spirals_y, spirals_v, best_spirals
         );
 
@@ -387,7 +446,7 @@ int main ()
         vector<double> x_points_ego;
         vector<double> y_points_ego;
 
-        // Convert next path segment into ego vehicle cooridnates
+        // Convert the planned path segment into ego vehicle coordinates
         transform_path_to_ego_coordinates(x_points_ego, y_points_ego, x_points, y_points, x_position, y_position, yaw);
 
         // Save time and compute delta time
@@ -395,21 +454,22 @@ int main ()
         new_delta_time = difftime(timer, prev_timer);
         prev_timer = timer;
 
-        // Find closest point on planned path segment to the current ego vehicle (player) position
-        unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, x_position, y_position);
+        // Find closest waypoint on the planned path segment in driving direction (using ego vehicle coordinates)
+        unsigned int closest_wp_idx = find_next_waypoint_in_ego_coordinates(x_points_ego, y_points_ego);
+        // unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, x_position, y_position);
 
-        // Calculate distance to closest point on planned path segment
+        // Calculate distance to the closest point on the planned path segment
         double dist_closest_wp = distance_between_points(
           x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
         );
 
-        // Define a lookahead especially to stabilize lateral pid control for a non-linear dynamic system (ref. bicycle model)
-
         // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
-        // unsigned int lookahead_wp_idx = x_points.size()-1;
-        unsigned int lookahead_wp_idx = closest_wp_idx + 2;
-
-        // Calculate distance to lookahead waypoint
+        unsigned int lookahead_wp_idx = x_points_ego.size() - 1;
+        if (closest_wp_idx + 2 < x_points_ego.size()) {
+          unsigned int lookahead_wp_idx = closest_wp_idx + 2;
+        }
+        
+        // Calculate distance to the lookahead waypoint on the planned path segment
         double dist_lookahead_wp = distance_between_points(
           x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
         );
@@ -419,7 +479,7 @@ int main ()
         ////////////////////////////////////////////////////
 
         /**
-          * Step 2: Get a desired heading from the current ego vehicle position towards the lookahead waypoint on
+          * Step 2: Get a desired heading from the current ego vehicle position towards the target waypoint on
           *         the planned trajectory to calculte a new setpoint for steering control
           **/
         // Calculate desired yaw angle from the current position to the closest waypoint on the planned trajectory
@@ -445,21 +505,27 @@ int main ()
         double cte_closest_wp = y_points_ego[closest_wp_idx];
 
         /**
-        * Step 3): Update steering control given the current heading and the desired heading on the planned trajectory
+        * Step 3): Update steering control given the current cross-track error / or heading error
         **/
         // Define vector to hold the pid steer control errors and error gains
         vector<double> pid_steer_errors;
         vector<double> pid_steer_error_gains;
 
         // Define set point for steering control variable (select control variable)
-        // double steer_setpoint = yaw_closest_wp;
-        // double steer_setpoint = yaw_lookahead_wp;
-        // double steer_setpoint = cte_closest_wp;
-        double steer_setpoint = cte_lookahead_wp;
+        double steer_setpoint = cte_closest_wp;
+        if (!USE_CTE && USE_LOOKAHEAD_WP) {
+          steer_setpoint = yaw_lookahead_wp;
+        } else if (!USE_CTE && !USE_LOOKAHEAD_WP) {
+          steer_setpoint = yaw_closest_wp;
+        } else if (USE_CTE && USE_LOOKAHEAD_WP) {
+          steer_setpoint = cte_lookahead_wp;
+        }
 
         // Define actual steering control variable (select control variable)
-        // double steer_act_value = yaw;
-        double steer_act_value = 0;
+        double steer_act_value = 0;  // actual ego position is always zero in ego coordinates
+        if (!USE_CTE) {
+          double steer_act_value = yaw;
+        }
 
         // Update the delta time with the previous command
         pid_steer.UpdateDeltaTime(new_delta_time);
@@ -519,7 +585,7 @@ int main ()
         // Longidudinal motion control (throttle control)
         ////////////////////////////////////////////////////
         /**
-          * Step 2: Get a desired velocity setpoint from the lookahead waypoint on the planned trajectory
+          * Step 2: Get a desired velocity setpoint from the target waypoint on the planned trajectory
           *         to calculte a new setpoint for throttle control
           **/
         // Get the desired velocity at the closest waypoint on the planned trajectory
@@ -536,8 +602,10 @@ int main ()
         vector<double> pid_throttle_error_gains;
 
         // Define set point for velocity error calculation and throttle control input
-        // double velocity_setpoint = velocity_closest_wp;
-        double velocity_setpoint = velocity_lookahead_wp;
+        double velocity_setpoint = velocity_closest_wp;
+        if (USE_LOOKAHEAD_WP) {
+          velocity_setpoint = velocity_lookahead_wp;
+        }
 
         // Update the delta time with the previous command
         pid_throttle.UpdateDeltaTime(new_delta_time);

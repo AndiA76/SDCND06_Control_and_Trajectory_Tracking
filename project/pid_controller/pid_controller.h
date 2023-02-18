@@ -40,15 +40,25 @@ public:
     double output_lim_max_;     // upper limit
 
     /*
+    * Integration window limits
+    */
+    double int_win_min_;    // lower limit
+    double int_win_max_;    // upper limit
+
+    /*
     * Control ouptut
     */
     double control_output_;
 
     /*
-    * Delta time
+    * Delta-time
     */
     double delta_t_;
-    double delta_t_min_ = 1.0e-6;  // prevent division by zero
+
+    /*
+    * Delta-time limitation to prevent division by zero => limits differentiator
+    */
+    double delta_t_min_;
 
     /*
     * Constructor
@@ -63,7 +73,17 @@ public:
     /*
     * Initialize PID.
     */
-    void Init(double Kp, double Ki, double Kd, double output_lim_max, double output_lim_min, double int_error_0 = 0.0);
+    void Init(
+        double Kp,
+        double Ki,
+        double Kd,
+        double output_lim_min,
+        double output_lim_max,
+        double int_win_min,
+        double int_win_max,
+        double delta_t_min = 1.0e-6,
+        double initial_error = 0.0
+    );
 
     /*
     * Update PID control errors and control command given the actual setpoint and the actual measurement.

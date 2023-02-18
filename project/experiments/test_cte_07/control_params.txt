@@ -6,7 +6,10 @@ Ki_steer = 0.008;
 Kd_steer = 0.28;
 output_lim_min_steer = -1.2;
 output_lim_max_steer = 1.2;
-int_errot_0_steer = 0.0;
+int_win_min_steer = -1.2;
+int_win_max_steer = 1.2;
+delta_t_min_steer = 1.0e-6;
+initial_steer_error = 0.0;
 
 Throttle control parameters:
 Kp_throttle = 0.17;
@@ -14,4 +17,8 @@ Ki_throttle = 0.004;
 Kd_throttle = 0.0;
 output_lim_min_throttle = -1.0;
 output_lim_max_throttle = 1.0;
-int_error_0_throttle = 0.0;
+int_win_min_throttle = -1.0;
+int_win_max_throttle = 1.0;
+delta_t_min_throttle = 1e-6;
+intial_throttle_error = 0.0;
+
