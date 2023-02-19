@@ -110,7 +110,7 @@ vector<State> obstacles;
 // Path segment planner
 void path_planner(
   vector<double>& x_points, vector<double>& y_points, vector<double>& v_points,
-  double yaw, double velocity,
+  double x_position, double y_position, double yaw, double velocity,
   State goal, bool is_junction, string tl_state,
   vector< vector<double> >& spirals_x, vector< vector<double> >& spirals_y,
   vector< vector<double> >& spirals_v, vector<int>& best_spirals
@@ -271,8 +271,8 @@ unsigned int find_next_waypoint_in_ego_coordinates(vector<double>& x_path_ego, v
 }
 
 
-// Find closest point on a path segment to a given reference position using absolute coordinates
-unsigned int find_closest_point_on_path_segment(vector<double>& x_path, vector<double>& y_path, double x_ref, double y_ref) {
+// Find closest point on a path segment to a given reference position
+unsigned int find_closest_point_on_path(vector<double>& x_path, vector<double>& y_path, double x_ref, double y_ref) {
   unsigned int idx_min_dist = 0;
   double min_dist = DBL_MAX;
   // Loop over all path segment points
@@ -320,13 +320,11 @@ int main ()
   **/
   PID pid_steer = PID();
   // Set PID steer control parameters
-  double Kp_steer = 0.18; // 0.21; // 0.3;
-  double Ki_steer = 0.008; // 0.001; // 0.01;
-  double Kd_steer = 0.28; // 0.1; // 0.3; // 0.6;
+  double Kp_steer = 0.1; // 0.18; // 0.21; // 0.3;
+  double Ki_steer = 0.0; // 0.0001; // 0.001; // 0.01;
+  double Kd_steer = 0.2; // 0.28; // 0.1; // 0.3; // 0.6;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
-  double int_win_min_steer = -0.6;
-  double int_win_max_steer = 0.6;
   double delta_t_min_steer = 1.0e-3;
   double initial_steer_error = 0.0;
   // Initialize PID steer controller for lateral motion control
@@ -336,8 +334,6 @@ int main ()
     Kd_steer,
     output_lim_min_steer,
     output_lim_max_steer,
-    int_win_min_steer,
-    int_win_max_steer,
     delta_t_min_steer,
     initial_steer_error
   );
@@ -347,13 +343,11 @@ int main ()
   **/
   PID pid_throttle = PID();
   // Set PID throttle control parameters
-  double Kp_throttle = 0.17; // 0.5; // 0.3 // 0.25;
-  double Ki_throttle = 0.004; // 0.02; // 0.001; // 0.0009;
+  double Kp_throttle = 0.18; // 0.5; // 0.3 // 0.25;
+  double Ki_throttle = 0.003; // 0.02; // 0.001; // 0.0009;
   double Kd_throttle = 0.0; // 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
-  double int_win_min_throttle = -0.5;
-  double int_win_max_throttle = 0.5;
   double delta_t_min_throttle = 1e-3;
   double intial_throttle_error = 0.0;
   // Initialize PID throttle controller for longitudinal motion control
@@ -363,8 +357,6 @@ int main ()
     Kd_throttle,
     output_lim_min_throttle,
     output_lim_max_throttle,
-    int_win_min_throttle,
-    int_win_max_throttle,
     delta_t_min_throttle,
     intial_throttle_error
   );
@@ -433,7 +425,7 @@ int main ()
         // Plan next path segment using spiral interpolation to the next target waypoint
         path_planner(
           x_points, y_points, v_points,
-          yaw, velocity,
+          x_position, y_position, yaw, velocity,
           goal, is_junction, tl_state,
           spirals_x, spirals_y, spirals_v, best_spirals
         );
@@ -450,9 +442,12 @@ int main ()
         new_delta_time = difftime(timer, prev_timer);
         prev_timer = timer;
 
+        // Estimate wheelbase of the ego vehicle (distance between front and rear axle) in [m]
+        double wheelbase = 4.0;
+
         // Find closest waypoint on the planned path segment in driving direction (using ego vehicle coordinates)
-        unsigned int closest_wp_idx = find_next_waypoint_in_ego_coordinates(x_points_ego, y_points_ego);
-        // unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, x_position, y_position);
+        // unsigned int closest_wp_idx = find_next_waypoint_in_ego_coordinates(x_points_ego, y_points_ego);
+        unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, wheelbase/2.0, 0.0);
 
         // Calculate distance to the closest point on the planned path segment
         double dist_closest_wp = distance_between_points(
@@ -515,7 +510,7 @@ int main ()
 
         // Define actual steering control variable (select control variable)
         double steer_act_value = 0;  // actual ego position is always zero in ego coordinates
-        // double steer_act_value = yaw;
+        //double steer_act_value = yaw;
 
         // Update the delta time with the previous command
         pid_steer.UpdateDeltaTime(new_delta_time);
@@ -592,7 +587,7 @@ int main ()
         vector<double> pid_throttle_error_gains;
 
         // Define set point for velocity error calculation and throttle control input
-        // double velocity_setpoint = velocity_lookahead_wp;
+        //double velocity_setpoint = velocity_lookahead_wp;
         double velocity_setpoint = velocity_closest_wp;
 
         // Update the delta time with the previous command

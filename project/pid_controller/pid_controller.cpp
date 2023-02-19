@@ -22,8 +22,6 @@ void PID::Init(
    double Kd,
    double output_lim_min,
    double output_lim_max,
-   double int_win_min,
-   double int_win_max,
    double delta_t_min,
    double initial_error
 ) {
@@ -39,13 +37,10 @@ void PID::Init(
    // Set output saturation limits
    output_lim_min_ = output_lim_min;
    output_lim_max_ = output_lim_max;
-   // Set integration window limits
-   int_win_min_ = int_win_min;
-   int_win_max_ = int_win_max;
-   // Set initial state of the integrator
-   int_error_ = initial_error;
    // Set minmal delta time to prevent division by zero (limits differentiator magnitude)
    delta_t_min_ = delta_t_min;
+   // Set initial state of the integrator
+   int_error_ = initial_error;
    // Initialize current and previous error
    curr_error_ = initial_error;
    prev_error_ = curr_error_;
@@ -81,10 +76,8 @@ void PID::Update(double actual_setpoint, double actual_measurement) {
       // Clamp PID control output to its upper limit and stop integration (don't update int_error_)
       control_output_ = output_lim_max_;
    } else {
-      // Update integral error and continue integration only within the allowed integration window
-      if ((int_win_min_ < Ki_ * pred_int_error) && (Ki_ * pred_int_error < int_win_max_)) {
-         int_error_ = pred_int_error;
-      }
+      // Update integral error and continue integration
+      int_error_ = pred_int_error;
       // Update PID control output
       control_output_ = pred_control_output;
    }

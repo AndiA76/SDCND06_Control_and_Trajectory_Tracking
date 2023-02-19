@@ -80,7 +80,7 @@ velocity = 0
 _prev_junction_id = -1
 _tl_state = 'none'
 _active_maneuver = 0
-_update_point_thresh = 16
+_update_point_thresh = 20 # 16
 _prev_yaw = 0
 _pivot = carla.Transform()
 
@@ -849,7 +849,7 @@ def game_loop(args):
             if update_cycle and (len(way_points) < _update_point_thresh):
 
                 update_cycle = False
-                # print("sending data")
+                print("sending data")
 
                 x_points = [point.location.x for point in way_points]
                 y_points = [point.location.y for point in way_points]
@@ -872,6 +872,7 @@ def game_loop(args):
                 yaw = t.rotation.yaw * math.pi / 180
                 print(f'yaw sent: {yaw}')
 
+                # send data to the pid_controller loop
                 ws.send(
                     json.dumps(
                         {
@@ -1052,8 +1053,8 @@ def main():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
         asyncio.wait([
-            ws_event(loop),
-            game_loop(args)
+            ws_event(loop),  # get data from web socket event
+            game_loop(args)  # run next game loop with pid_controller
         ])
     )
 

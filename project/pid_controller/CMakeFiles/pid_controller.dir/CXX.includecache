@@ -232,6 +232,16 @@ utils.h
 velocity_profile_generator.h
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.h
 
+/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/pid_controller.cpp
+pid_controller.h
+/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/pid_controller.h
+vector
+-
+iostream
+-
+math.h
+-
+
 /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/pid_controller.h
 vector
 -

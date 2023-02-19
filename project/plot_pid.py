@@ -9,8 +9,9 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
+FILEPATH = './'
 #FILEPATH = 'experiments/test_cte_07/'
-FILEPATH = 'experiments/test_yaw_02/'
+#FILEPATH = 'experiments/test_yaw_02/'
 
 
 def read_steer_data():

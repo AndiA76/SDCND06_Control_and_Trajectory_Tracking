@@ -36,14 +36,8 @@ public:
     /*
     * Output limits
     */
-    double output_lim_min_;     // lower limit
-    double output_lim_max_;     // upper limit
-
-    /*
-    * Integration window limits
-    */
-    double int_win_min_;    // lower limit
-    double int_win_max_;    // upper limit
+    double output_lim_min_;     // lower output limit
+    double output_lim_max_;     // upper output limit
 
     /*
     * Control ouptut
@@ -79,8 +73,6 @@ public:
         double Kd,
         double output_lim_min,
         double output_lim_max,
-        double int_win_min,
-        double int_win_max,
         double delta_t_min = 1.0e-6,
         double initial_error = 0.0
     );
