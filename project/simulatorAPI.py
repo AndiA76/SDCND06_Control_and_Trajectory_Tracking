@@ -853,7 +853,7 @@ def game_loop(args):
 
                 x_points = [point.location.x for point in way_points]
                 y_points = [point.location.y for point in way_points]
-                # yaw = way_points[0].rotation.yaw * math.pi / 180
+                yaw = way_points[0].rotation.yaw * math.pi / 180
                 waypoint_x, waypoint_y, waypoint_t, waypoint_j = world.get_waypoint(x_points[-1], y_points[-1])
 
                 # get actual velocity of the ego vehicle
@@ -870,6 +870,7 @@ def game_loop(args):
 
                 # get actual heading (yaw angle) of the ego vehicle
                 yaw = t.rotation.yaw * math.pi / 180
+                print(f'yaw sent: {yaw}')
 
                 ws.send(
                     json.dumps(
@@ -877,7 +878,7 @@ def game_loop(args):
                             'traj_x': x_points,
                             'traj_y': y_points,
                             'traj_v': v_points,                            
-                            'yaw': yaw,  #'yaw': _prev_yaw,
+                            'yaw': yaw,  # 'yaw': _prev_yaw,
                             "velocity": velocity,
                             'time': sim_time,
                             'waypoint_x': waypoint_x,

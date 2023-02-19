@@ -110,7 +110,7 @@ vector<State> obstacles;
 // Path segment planner
 void path_planner(
   vector<double>& x_points, vector<double>& y_points, vector<double>& v_points,
-  double x_position, double y_position, double yaw, double velocity,
+  double yaw, double velocity,
   State goal, bool is_junction, string tl_state,
   vector< vector<double> >& spirals_x, vector< vector<double> >& spirals_y,
   vector< vector<double> >& spirals_v, vector<int>& best_spirals
@@ -119,24 +119,24 @@ void path_planner(
   State ego_state;
 
   // Initialize ego vehicle position and velocity based on last point on the driven trajectory
-  //ego_state.location.x = x_points[x_points.size()-1];
-  //ego_state.location.y = y_points[y_points.size()-1];
-  ego_state.location.x = x_position;
-  ego_state.location.y = y_position;
+  ego_state.location.x = x_points[x_points.size()-1];
+  ego_state.location.y = y_points[y_points.size()-1];
+  //ego_state.location.x = x_position;
+  //ego_state.location.y = y_position;
   ego_state.velocity.x = velocity;
 
   // Estimatate current ego vehicle yaw angle
-  //if ( x_points.size() > 1 ) {
-  //	ego_state.rotation.yaw = angle_between_points(
-  //    x_points[x_points.size()-2], y_points[y_points.size()-2],
-  //    x_points[x_points.size()-1], y_points[y_points.size()-1]
-  //  );
-  //	ego_state.velocity.x = v_points[v_points.size()-1];
-  //	if(velocity < 0.01)
-  //		ego_state.rotation.yaw = yaw;
-  //}
+  if ( x_points.size() > 1 ) {
+  	ego_state.rotation.yaw = angle_between_points(
+      x_points[x_points.size()-2], y_points[y_points.size()-2],
+      x_points[x_points.size()-1], y_points[y_points.size()-1]
+    );
+  	ego_state.velocity.x = v_points[v_points.size()-1];
+  	if(velocity < 0.01)
+  		ego_state.rotation.yaw = yaw;
+  }
   // Get current ego vehicle heading (yaw angle)
-  ego_state.rotation.yaw = yaw;
+  //ego_state.rotation.yaw = yaw;
 
   // Get new maneuver from behavior planner
   Maneuver behavior = behavior_planner.get_active_maneuver();
@@ -202,9 +202,9 @@ void path_planner(
   	best_spiral_idx = best_spirals[best_spirals.size()-1];
 
   // Generate waypoints for next path segment based on best trajectory
-  int index = 0;
-  int max_points = 20;
-  int add_points = spirals_x[best_spiral_idx].size();
+  unsigned int index = 0;
+  unsigned int max_points = 20;
+  unsigned int add_points = spirals_x[best_spiral_idx].size();
   while ( x_points.size() < max_points && index < add_points ) {
     double point_x = spirals_x[best_spiral_idx][index];
     double point_y = spirals_y[best_spiral_idx][index];
@@ -369,10 +369,6 @@ int main ()
     intial_throttle_error
   );
 
-  // Define whether to control on a lookahead waypoint or on the closest waypoint ahead
-  bool USE_LOOKAHEAD_WP = false;
-  bool USE_CTE = false;
-
   // Execute control cycle on receiving a new message from SimulationAPI
   h.onMessage(
     [&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer]
@@ -396,7 +392,7 @@ int main ()
         vector<double> x_points = data["traj_x"];
         vector<double> y_points = data["traj_y"];
         vector<double> v_points = data["traj_v"];
-        // Actual yaw angle of the ego vehicle pose
+        // Previous yaw angle of the ego vehicle
         double yaw = data["yaw"];
         // Actual velocity of the ego vehicle
         double velocity = data["velocity"];
@@ -437,7 +433,7 @@ int main ()
         // Plan next path segment using spiral interpolation to the next target waypoint
         path_planner(
           x_points, y_points, v_points,
-          x_position, y_position, yaw, velocity,
+          yaw, velocity,
           goal, is_junction, tl_state,
           spirals_x, spirals_y, spirals_v, best_spirals
         );
@@ -512,20 +508,14 @@ int main ()
         vector<double> pid_steer_error_gains;
 
         // Define set point for steering control variable (select control variable)
+        //double steer_setpoint = yaw_lookahead_wp;
+        //double steer_setpoint = yaw_closest_wp;
+        //double steer_setpoint = cte_lookahead_wp;
         double steer_setpoint = cte_closest_wp;
-        if (!USE_CTE && USE_LOOKAHEAD_WP) {
-          steer_setpoint = yaw_lookahead_wp;
-        } else if (!USE_CTE && !USE_LOOKAHEAD_WP) {
-          steer_setpoint = yaw_closest_wp;
-        } else if (USE_CTE && USE_LOOKAHEAD_WP) {
-          steer_setpoint = cte_lookahead_wp;
-        }
 
         // Define actual steering control variable (select control variable)
         double steer_act_value = 0;  // actual ego position is always zero in ego coordinates
-        if (!USE_CTE) {
-          double steer_act_value = yaw;
-        }
+        // double steer_act_value = yaw;
 
         // Update the delta time with the previous command
         pid_steer.UpdateDeltaTime(new_delta_time);
@@ -602,10 +592,8 @@ int main ()
         vector<double> pid_throttle_error_gains;
 
         // Define set point for velocity error calculation and throttle control input
+        // double velocity_setpoint = velocity_lookahead_wp;
         double velocity_setpoint = velocity_closest_wp;
-        if (USE_LOOKAHEAD_WP) {
-          velocity_setpoint = velocity_lookahead_wp;
-        }
 
         // Update the delta time with the previous command
         pid_throttle.UpdateDeltaTime(new_delta_time);
