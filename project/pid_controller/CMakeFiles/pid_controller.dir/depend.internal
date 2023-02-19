@@ -8365,6 +8365,7 @@ CMakeFiles/pid_controller.dir/main.cpp.o
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/pid_controller.h
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/planning_params.h
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_base.h
+ /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/stanley_controller.h
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.h
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.h
@@ -16968,6 +16969,9 @@ CMakeFiles/pid_controller.dir/spiral_base.cpp.o
 CMakeFiles/pid_controller.dir/spiral_equations.cpp.o
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_equations.cpp
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_equations.h
+CMakeFiles/pid_controller.dir/stanley_controller.cpp.o
+ /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/stanley_controller.cpp
+ /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/stanley_controller.h
 CMakeFiles/pid_controller.dir/utils.cpp.o
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/structs.h
  /home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.cpp

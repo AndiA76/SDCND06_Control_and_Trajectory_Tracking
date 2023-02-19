@@ -1,4 +1,4 @@
-"""Script to plot longitudinal and lateral pid control errors and control commands."""
+"""Script to plot longitudinal (pid) control and lateral (stanley) control errors and control commands."""
 # **********************************************
 #  Self-Driving Car Nano-degree - Udacity
 #   Created on: January 7, 2023
@@ -10,43 +10,32 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 FILEPATH = './'
-#FILEPATH = 'experiments/test_cte_07/'
-#FILEPATH = 'experiments/test_yaw_02/'
+#FILEPATH = 'experiments/test_stanley_01/'
 
 
 def read_steer_data():
     """Read recorded lateral control data."""
-    steer_filepath = os.path.join(FILEPATH, 'steer_pid_data.txt')
+    steer_filepath = os.path.join(FILEPATH, 'steer_stanley_data.txt')
     cols = pd.read_csv(steer_filepath, delim_whitespace = True, nrows = 1).columns
     steer_df = pd.read_csv(
         steer_filepath, delim_whitespace = True, header = None, usecols = list(range(0, len(cols)))
     )
     steer_df.columns = [
         'Iteration',
-        'Steer Setpoint Value',
-        'Actual Steer Value',
-        'Proportional Steer Error',
-        'Integral Steer Error',
-        'Differential Steer Error',
-        'Proportional Steer Error Gain',
-        'Integral Steer Error Gain',
-        'Differential Steer Error Gain',
+        'Heading Setpoint',
+        'Actual Heading',
+        'Actual Crosstrack Error',
+        'Actual Velocity',
+        'Stanley Heading Error',
+        'Stanley Crosstrack Error',
+        'Stanley Heading Error Gain',
+        'Stanley Crosstrack Error Gain',
         'Steer Control Command',
-        'Yaw to Closest Waypoint',
-        'Yaw to Lookahead Waypoint',
-        'Actual Yaw',
-        'Heading Error w.r.t. Closest Waypoint',
-        'Heading Error w.r.t. Lookahead Waypoint',
-        'Crosstrack Error w.r.t. Closest Waypoint',
-        'Crosstrack Error w.r.t. Lookahead Waypoint',
         'Actual X-Position',
         'Actual Y-Position',
         'Closest X-Waypoint',
         'Closest Y-Waypoint',
-        'Lookahead X-Waypoint',
-        'Lookahead Y-Waypoint',
         'Distance to Closest Waypoint',
-        'Distance to Lookahead Waypoint',
     ]
     print("Steer data:")
     print(steer_df.head())
@@ -97,11 +86,10 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax1,
         x = 'Iteration',
         y = [
-            'Steer Setpoint Value',
-            'Actual Steer Value',
-            'Proportional Steer Error',
-            'Integral Steer Error',
-            'Differential Steer Error',
+            'Heading Setpoint',
+            'Actual Heading',
+            'Stanley Heading Error',
+            'Stanley Crosstrack Error',
         ]
     )
     ax1.set_title('Steering control errors')
@@ -113,9 +101,8 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax2,
         x = 'Iteration',
         y = [
-            'Proportional Steer Error Gain',
-            'Integral Steer Error Gain',
-            'Differential Steer Error Gain',
+            'Stanley Heading Error Gain',
+            'Stanley Crosstrack Error Gain',
             'Steer Control Command',
         ]
     )
@@ -128,8 +115,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax3,
         x = 'Iteration',
         y = [
-            'Crosstrack Error w.r.t. Closest Waypoint',
-            'Crosstrack Error w.r.t. Lookahead Waypoint',
+            'Stanley Crosstrack Error',
         ]
     )
     ax3.set_title('Crosstrack errors (steer control)')
@@ -141,8 +127,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
         ax = ax4,
         x = 'Iteration',
         y = [
-            'Heading Error w.r.t. Closest Waypoint',
-            'Heading Error w.r.t. Lookahead Waypoint',
+            'Stanley Heading Error',
         ]
     )
     ax4.set_title('Heading errors (steer control)')
@@ -150,7 +135,7 @@ def plot_steer_data(steer_ctr_df, num_rows):
     ax4.set_ylabel('Heading error [rad]')
 
     # Set higher-level title of the figure
-    fig.suptitle('Lateral control (steer control)')
+    fig.suptitle('Lateral Stanley control (steer control)')
     # Avoid overlapping of titles and axis labels in subplots
     plt.subplots_adjust(hspace=0.35)
 
@@ -227,7 +212,7 @@ def plot_throttle_data(throttle_ctr_df, num_rows):
     ax4.set_ylabel('Velocity [m/s]')
 
     # Set higher-level title of the figure
-    fig.suptitle('Longitudinal control (throttle control)')
+    fig.suptitle('Longitudinal PID control (throttle control)')
     # Avoid overlapping of titles and axis labels in subplots
     plt.subplots_adjust(hspace=0.35)
 
@@ -248,7 +233,6 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         y = [
             'Actual X-Position',
             'Closest X-Waypoint',
-            'Lookahead X-Waypoint',
         ]
     )
     ax1.set_title('X-coordinates of actual and planned trajectory')
@@ -262,7 +246,6 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         y = [
             'Actual Y-Position',
             'Closest Y-Waypoint',
-            'Lookahead Y-Waypoint',
         ]
     )
     ax2.set_title('Y-coordinates of actual and planned trajectory')
@@ -275,7 +258,6 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         x = 'Iteration',
         y = [
             'Distance to Closest Waypoint',
-            'Distance to Lookahead Waypoint',
         ]
     )
     ax3.set_title('Distances between actual position and planned path waypoints')
@@ -286,9 +268,8 @@ def plot_path_coordinates(steer_ctr_df, num_rows):
         ax = ax4,
         x = 'Iteration',
         y = [
-            'Actual Yaw',
-            'Yaw to Closest Waypoint',
-            'Yaw to Lookahead Waypoint',
+            'Heading Setpoint',
+            'Actual Heading',
         ]
     )
     ax4.set_title('Heading deviation')
@@ -331,16 +312,6 @@ def plot_trajectories(steer_ctr_df, num_rows):
     )
     ax1.set_xlabel('X-coordinate [m]')
     ax1.set_ylabel('Y-cooridnate [m]')
-
-    # Plot planned trajectory w.r.t. to lookahead waypoint
-    steer_ctr_df2.plot(
-        ax = ax1,
-        x = 'Lookahead X-Waypoint',
-        y = [
-            'Lookahead Y-Waypoint',
-        ],
-        color='blue'
-    )
 
     # Set higher-level title of the figure
     fig.suptitle('Actual and planned trajectories')

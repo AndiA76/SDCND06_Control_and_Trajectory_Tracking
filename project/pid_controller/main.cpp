@@ -45,6 +45,7 @@
 #include "planning_params.h"
 #include "utils.h"
 #include "pid_controller.h"
+#include "stanley_controller.h"
 
 #include <limits>
 #include <iostream>
@@ -250,27 +251,6 @@ void transform_path_to_ego_coordinates(
 }
 
 
-// Find closest waypoint on path segment in driving direction using ego coordinates
-unsigned int find_next_waypoint_in_ego_coordinates(vector<double>& x_path_ego, vector<double>& y_path_ego) {
-  unsigned int idx_min_dist = 0;
-  double min_dist = DBL_MAX;
-  // Loop over all path segment points with a positive x-coordinate
-  for ( unsigned int idx=0; idx<x_path_ego.size(); ++idx ) {
-    if ( x_path_ego[idx] > 0 ) {
-      // Calculate the distance of the current point on the path segment to the reference point
-      double dist = distance_between_points(x_path_ego[idx], y_path_ego[idx], 0.0, 0.0);
-      if (dist < min_dist) {
-        // Update minimum distance (absolute value)
-        min_dist = dist;
-        // Update index of the waypoint closest to the reference point
-        idx_min_dist = idx;
-      }
-    }
-  }
-  return idx_min_dist;
-}
-
-
 // Find closest point on a path segment to a given reference position
 unsigned int find_closest_point_on_path(vector<double>& x_path, vector<double>& y_path, double x_ref, double y_ref) {
   unsigned int idx_min_dist = 0;
@@ -320,9 +300,9 @@ int main ()
   **/
   PID pid_steer = PID();
   // Set PID steer control parameters
-  double Kp_steer = 0.1; // 0.18; // 0.21; // 0.3;
+  double Kp_steer = 0.16; // 0.18; // 0.21; // 0.3;
   double Ki_steer = 0.0; // 0.0001; // 0.001; // 0.01;
-  double Kd_steer = 0.2; // 0.28; // 0.1; // 0.3; // 0.6;
+  double Kd_steer = 0.0; // 0.28; // 0.1; // 0.3; // 0.6;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
   double delta_t_min_steer = 1.0e-3;
@@ -338,13 +318,28 @@ int main ()
     initial_steer_error
   );
 
+  // Create additional Stanley steering controller for testing purpose
+  STANLEY stanley_steer = STANLEY();
+  // Set STANLEY steer control parameters
+  double K_cte_stanley = 0.1; 
+  double output_lim_min_stanley = -1.2;
+  double output_lim_max_stanley = 1.2;
+  double velocity_threshold_stanley = 1.0e-3;
+  // Initialize Stanley steer controller for lateral motion control
+  stanley_steer.Init(
+    K_cte_stanley,
+    output_lim_min_stanley,
+    output_lim_max_stanley,
+    velocity_threshold_stanley
+  );
+
   /**
   * (Step 1): Create PID (pid_throttle) for throttle control command and initialize values
   **/
   PID pid_throttle = PID();
   // Set PID throttle control parameters
-  double Kp_throttle = 0.18; // 0.5; // 0.3 // 0.25;
-  double Ki_throttle = 0.003; // 0.02; // 0.001; // 0.0009;
+  double Kp_throttle = 0.17; // 0.5; // 0.3 // 0.25;
+  double Ki_throttle = 0.004; // 0.02; // 0.001; // 0.0009;
   double Kd_throttle = 0.0; // 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
@@ -363,7 +358,7 @@ int main ()
 
   // Execute control cycle on receiving a new message from SimulationAPI
   h.onMessage(
-    [&pid_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer]
+    [&pid_steer, &pid_throttle, &stanley_steer, &new_delta_time, &timer, &prev_timer, &i, &prev_timer]
     (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
       // Check if current message has data
@@ -379,6 +374,9 @@ int main ()
         file_steer.open("steer_pid_data.txt");
         fstream file_throttle;
         file_throttle.open("throttle_pid_data.txt");
+        // Open additional log file to save standley_controller values (for testing purpose)
+        fstream file_steer_stanley;
+        file_steer_stanley.open("steer_stanley_data.txt");
 
         // Planned trajectory points (interpolated waypoints)
         vector<double> x_points = data["traj_x"];
@@ -446,8 +444,8 @@ int main ()
         double wheelbase = 4.0;
 
         // Find closest waypoint on the planned path segment in driving direction (using ego vehicle coordinates)
-        // unsigned int closest_wp_idx = find_next_waypoint_in_ego_coordinates(x_points_ego, y_points_ego);
-        unsigned int closest_wp_idx = find_closest_point_on_path_segment(x_points, y_points, wheelbase/2.0, 0.0);
+        //unsigned int closest_wp_idx = find_closest_point_on_path(x_points_ego, y_points_ego, 0.0, 0.0);
+        unsigned int closest_wp_idx = find_closest_point_on_path(x_points_ego, y_points_ego, wheelbase/2.0, 0.0);
 
         // Calculate distance to the closest point on the planned path segment
         double dist_closest_wp = distance_between_points(
@@ -496,7 +494,7 @@ int main ()
         double cte_closest_wp = y_points_ego[closest_wp_idx];
 
         /**
-        * Step 3): Update steering control given the current cross-track error / or heading error
+        * Step 3a): Update steering control given the current cross-track error / or heading error
         **/
         // Define vector to hold the pid steer control errors and error gains
         vector<double> pid_steer_errors;
@@ -565,6 +563,71 @@ int main ()
         file_steer << " " << y_points[lookahead_wp_idx];
         file_steer << " " << dist_closest_wp;
         file_steer << " " << dist_lookahead_wp << endl;
+
+        /**
+        * Step 3b): Update stanley steering control given the current heading and cross-track error
+        **/
+        // verwrite PID steer control command with Stanley steer control command
+        bool USE_STANLEY = false;
+
+        // Define vector to hold the stanley steer control errors and error gains
+        vector<double> stanley_steer_errors;
+        vector<double> stanley_steer_error_gains;
+
+        // Update Stanley steer control errors and control command output
+        double stanely_yaw_setpoint = yaw_closest_wp;
+        //double stanely_yaw_setpoint = yaw_lookahead_wp;
+        double stanley_actual_cte = cte_closest_wp;
+        //double stanley_actual_cte = cte_lookahead_wp;
+        stanley_steer.Update(stanely_yaw_setpoint, yaw, stanley_actual_cte, velocity);
+
+        // Get Stanley steer control command
+        double stanley_steer_output = stanley_steer.GetControlCommand();
+
+        // Get PID steer control errors and error gains
+        stanley_steer_errors = stanley_steer.GetErrors();
+        stanley_steer_error_gains = stanley_steer.GetErrorGains();
+
+        // Decompose stanley steer error vector
+        double stanley_heading_error = stanley_steer_errors[0];
+        double stanley_crosstrack_error = stanley_steer_errors[1];
+
+        // Decompose stanley steer error gain vector
+        double stanley_heading_error_gain = stanley_steer_error_gains[0];
+        double stanley_crosstrack_error_gain = stanley_steer_error_gains[1];
+
+        // Save lateral control data
+        file_steer_stanley.seekg(std::ios::beg);
+        for (int j=0; j < i - 1; ++j) {
+          file_steer_stanley.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        file_steer_stanley << i ;
+        file_steer_stanley << " " << stanely_yaw_setpoint;
+        file_steer_stanley << " " << yaw;
+        file_steer_stanley << " " << stanley_actual_cte;
+        file_steer_stanley << " " << velocity;
+        file_steer_stanley << " " << stanley_heading_error;
+        file_steer_stanley << " " << stanley_crosstrack_error;
+        file_steer_stanley << " " << stanley_heading_error_gain;
+        file_steer_stanley << " " << stanley_crosstrack_error_gain;
+        file_steer_stanley << " " << stanley_steer_output;
+        file_steer_stanley << " " << x_position;
+        file_steer_stanley << " " << y_position;
+        file_steer_stanley << " " << x_points[closest_wp_idx];
+        file_steer_stanley << " " << y_points[closest_wp_idx];
+        file_steer_stanley << " " << dist_closest_wp << endl;
+
+        // Overwrite PID steer command with Stanley control command
+        if (USE_STANLEY) {
+          steer_output = stanley_steer_output;
+        }
+        cout << "stanley_heading_error = " << stanley_heading_error << endl;
+        cout << "stanley_crosstrack_error = " << stanley_crosstrack_error << endl;
+        cout << "stanley_heading_error_gain = " << stanley_heading_error_gain << endl;
+        cout << "stanley_crosstrack_error_gain = " << stanley_crosstrack_error_gain << endl;
+        cout << "stanley_steer_output = " << stanley_steer_output << endl;
+        cout << "steer_output = " << steer_output << endl;
+
 
         ////////////////////////////////////////////////////
         // Longidudinal motion control (throttle control)
@@ -676,6 +739,7 @@ int main ()
         // Close log files with the pid_controller data
         file_steer.close();
         file_throttle.close();
+        file_steer_stanley.close();
 
         // Send data back to simulatiorAPI
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);

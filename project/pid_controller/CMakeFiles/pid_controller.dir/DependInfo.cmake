@@ -13,6 +13,7 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/pid_controller.cpp" "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/CMakeFiles/pid_controller.dir/pid_controller.cpp.o"
   "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_base.cpp" "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/CMakeFiles/pid_controller.dir/spiral_base.cpp.o"
   "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/spiral_equations.cpp" "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/CMakeFiles/pid_controller.dir/spiral_equations.cpp.o"
+  "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/stanley_controller.cpp" "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/CMakeFiles/pid_controller.dir/stanley_controller.cpp.o"
   "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/utils.cpp" "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/CMakeFiles/pid_controller.dir/utils.cpp.o"
   "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/velocity_profile_generator.cpp" "/home/workspace/SDCND06_Control_and_Trajectory_Tracking/project/pid_controller/CMakeFiles/pid_controller.dir/velocity_profile_generator.cpp.o"
   )

@@ -1,13 +1,11 @@
 Steering control on crosstrack error w.r.t. closest waypoint to estimated front axle position
+Estimated wheelbase = 4.0 m
 
 Steering control parameters:
-Kp_steer = 0.1;
-Ki_steer = 0.0;
-Kd_steer = 0.05;
-output_lim_min_steer = -1.2;
-output_lim_max_steer = 1.2;
-delta_t_min_steer = 1.0e-3;
-initial_steer_error = 0.0;
+K_cte_stanley = 0.1
+output_lim_min_stanley = -1.2;
+output_lim_max_stanley = 1.2;
+velocity_threshold_stanley = 1.0e-3;
 
 Throttle control parameters:
 Kp_throttle = 0.17;
