@@ -1,4 +1,4 @@
-Steering control on crosstrack error w.r.t. closest waypoint to estimated front axle position
+Steering control on crosstrack error w.r.t. closest waypoint to ego center position
 
 Steering control parameters:
 Kp_steer = 0.1;

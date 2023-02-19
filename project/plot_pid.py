@@ -9,8 +9,8 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-FILEPATH = './'
-#FILEPATH = 'experiments/test_cte_07/'
+#FILEPATH = './'
+FILEPATH = 'experiments/test_cte_10/'
 #FILEPATH = 'experiments/test_yaw_02/'
 
 
