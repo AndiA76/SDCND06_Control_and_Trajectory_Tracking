@@ -1,0 +1,19 @@
+Steering control on crosstrack error w.r.t. closest waypoint to ego center position
+
+Steering control parameters:
+Kp_steer = 0.2;
+Ki_steer = 0.0;
+Kd_steer = 0.2;
+output_lim_min_steer = -1.2;
+output_lim_max_steer = 1.2;
+delta_t_min_steer = 1.0e-6;
+initial_steer_error = 0.0;
+
+Throttle control parameters:
+Kp_throttle = 0.2;
+Ki_throttle = 0.0;
+Kd_throttle = 0.2;
+output_lim_min_throttle = -1.0;
+output_lim_max_throttle = 1.0;
+delta_t_min_throttle = 1e-6;
+intial_throttle_error = 0.0;

@@ -1,8 +1,9 @@
 /**********************************************
  * Self-Driving Car Nano-degree - Udacity
  *  Created on: September 20, 2020
- *      Author: Munir Jojo-Verge
- 				Aaron Brown
+ *     Authors: Munir Jojo-Verge
+ *              Aaron Brown
+ * Modified by: Andreas Albrecht
  **********************************************/
 
 /**
@@ -62,74 +63,94 @@ using json = nlohmann::json;
 
 
 string hasData(string s) {
-
   auto found_null = s.find("null");
     auto b1 = s.find_first_of("{");
     auto b2 = s.find_first_of("}");
     if (found_null != string::npos) {
       return "";
-    }
-    else if (b1 != string::npos && b2 != string::npos) {
+    } else if (b1 != string::npos && b2 != string::npos) {
       return s.substr(b1, b2 - b1 + 1);
     }
     return "";
-
 }
 
+
+// Template of a signmum function
 template <typename T> int sgn(T val) {
-
     return (T(0) < val) - (val < T(0));
-
 }
 
-double angle_between_points(double x1, double y1, double x2, double y2){
 
+// Calculate angle between x-axis (cartesian coordinates) and the line through points [x1, y1] and [x2, y2]
+double angle_between_points(double x1, double y1, double x2, double y2) {
   return atan2(y2-y1, x2-x1);
-
 }
 
+
+// Calculate distance between points in 2D space
+double distance_between_points(double x1, double y1, double x2, double y2) {
+  return sqrt(pow(y2-y1, 2) + pow(x2-x1, 2));
+}
+
+
+// Declare and initialize Behavior Planner and all its class requirements
 BehaviorPlannerFSM behavior_planner(
       P_LOOKAHEAD_TIME, P_LOOKAHEAD_MIN, P_LOOKAHEAD_MAX, P_SPEED_LIMIT,
       P_STOP_THRESHOLD_SPEED, P_REQ_STOPPED_TIME, P_REACTION_TIME,
       P_MAX_ACCEL, P_STOP_LINE_BUFFER);
 
-// Decalre and initialized the Motion Planner and all its class requirements
+// Declare and initialized the Motion Planner and all its class requirements
 MotionPlanner motion_planner(P_NUM_PATHS, P_GOAL_OFFSET, P_ERR_TOLERANCE);
 
+
+// Define vector for obstacle positions plus obstacle flag
 bool have_obst = false;
 vector<State> obstacles;
 
+
+// Path segment planner
 void path_planner(
-  vector<double>& x_points, vector<double>& y_points, vector<double>& v_points, 
-  double yaw, double velocity, State goal, bool is_junction, string tl_state, 
-  vector< vector<double> >& spirals_x, vector< vector<double> >& spirals_y, 
+  vector<double>& x_points, vector<double>& y_points, vector<double>& v_points,
+  double x_position, double y_position, double yaw, double velocity,
+  State goal, bool is_junction, string tl_state,
+  vector< vector<double> >& spirals_x, vector< vector<double> >& spirals_y,
   vector< vector<double> >& spirals_v, vector<int>& best_spirals
 ) {
 
   State ego_state;
 
+  // Initialize ego vehicle position and velocity based on last point on the driven trajectory
   ego_state.location.x = x_points[x_points.size()-1];
   ego_state.location.y = y_points[y_points.size()-1];
+  //ego_state.location.x = x_position;
+  //ego_state.location.y = y_position;
   ego_state.velocity.x = velocity;
 
-  if (x_points.size() > 1) {
+  // Estimatate current ego vehicle yaw angle
+  if ( x_points.size() > 1 ) {
   	ego_state.rotation.yaw = angle_between_points(
-      x_points[x_points.size()-2], y_points[y_points.size()-2], x_points[x_points.size()-1], y_points[y_points.size()-1]
+      x_points[x_points.size()-2], y_points[y_points.size()-2],
+      x_points[x_points.size()-1], y_points[y_points.size()-1]
     );
   	ego_state.velocity.x = v_points[v_points.size()-1];
-  	if (velocity < 0.01)
+  	if(velocity < 0.01)
   		ego_state.rotation.yaw = yaw;
   }
+  // Get current ego vehicle heading (yaw angle)
+  //ego_state.rotation.yaw = yaw;
 
+  // Get new maneuver from behavior planner
   Maneuver behavior = behavior_planner.get_active_maneuver();
 
+  // Set goal point based on state transition for the new maneuver
   goal = behavior_planner.state_transition(ego_state, goal, is_junction, tl_state);
 
-  if (behavior == STOPPED) {
+  // Set target speed to zero on the final path segment if vehicle is supposed to stop
+  if ( behavior == STOPPED ) {
   	unsigned int max_points = 20;
   	double point_x = x_points[x_points.size()-1];
   	double point_y = y_points[x_points.size()-1];
-  	while (x_points.size() < max_points) {
+  	while ( x_points.size() < max_points ) {
   	  x_points.push_back(point_x);
   	  y_points.push_back(point_y);
   	  v_points.push_back(0);
@@ -137,28 +158,31 @@ void path_planner(
   	return;
   }
 
+  // Generate offset goal state
   auto goal_set = motion_planner.generate_offset_goals(goal);
 
+  // Generate spiral path segments between ego state and goal state
   auto spirals = motion_planner.generate_spirals(ego_state, goal_set);
 
+  // Desired goal speed
   auto desired_speed = utils::magnitude(goal.velocity);
 
   State lead_car_state;  // = to the vehicle ahead...
 
-  if (spirals.size() == 0) {
+  if ( spirals.size() == 0 ) {
   	cout << "Error: No spirals generated " << endl;
   	return;
   }
 
-  for (unsigned int i = 0; i < spirals.size(); i++) {
-
+  // Generate velocity profile for all spiral trajectories
+  for ( unsigned int i = 0; i < spirals.size(); i++ ) {
     auto trajectory = motion_planner._velocity_profile_generator.generate_trajectory(
-      spirals[i], desired_speed, ego_state, lead_car_state, behavior);
-
+      spirals[i], desired_speed, ego_state, lead_car_state, behavior
+    );
     vector<double> spiral_x;
     vector<double> spiral_y;
     vector<double> spiral_v;
-    for (unsigned int j = 0; j < trajectory.size(); j++) {
+    for ( unsigned int j = 0; j < trajectory.size(); j++ ) {
       double point_x = trajectory[j].path_point.x;
       double point_y = trajectory[j].path_point.y;
       double velocity = trajectory[j].v;
@@ -166,22 +190,23 @@ void path_planner(
       spiral_y.push_back(point_y);
       spiral_v.push_back(velocity);
     }
-
     spirals_x.push_back(spiral_x);
     spirals_y.push_back(spiral_y);
     spirals_v.push_back(spiral_v);
   }
 
+  // Get the best spiral trajectory avoiding collisions with obstacles
   best_spirals = motion_planner.get_best_spiral_idx(spirals, obstacles, goal);
   int best_spiral_idx = -1;
 
-  if (best_spirals.size() > 0)
+  if ( best_spirals.size() > 0 ) 
   	best_spiral_idx = best_spirals[best_spirals.size()-1];
 
-  int index = 0;
+  // Generate waypoints for next path segment based on best trajectory
+  unsigned int index = 0;
   unsigned int max_points = 20;
-  int add_points = spirals_x[best_spiral_idx].size();
-  while (x_points.size() < max_points && index < add_points) {
+  unsigned int add_points = spirals_x[best_spiral_idx].size();
+  while ( x_points.size() < max_points && index < add_points ) {
     double point_x = spirals_x[best_spiral_idx][index];
     double point_y = spirals_y[best_spiral_idx][index];
     double velocity = spirals_v[best_spiral_idx][index];
@@ -193,9 +218,11 @@ void path_planner(
 
 }
 
+
+// Set obstacle positions
 void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& obstacles, bool& obst_flag) {
 
-	for (unsigned int i = 0; i < x_points.size(); i++) {
+	for ( unsigned int i = 0; i < x_points.size(); i++ ) {
 		State obstacle;
 		obstacle.location.x = x_points[i];
 		obstacle.location.y = y_points[i];
@@ -205,14 +232,54 @@ void set_obst(vector<double> x_points, vector<double> y_points, vector<State>& o
 
 }
 
+
+// Transform planned path segments into the ego vehicle's coordinate system
+void transform_path_to_ego_coordinates(
+  vector<double>& x_points_ego, vector<double>& y_points_ego,
+  vector<double>& x_points, vector<double>& y_points,
+  double x_position, double y_position, double yaw
+) {
+  // Simple 2D backtransformation from absolute into relative coordinates
+  for ( unsigned int i = 0; i < x_points.size(); i++ ) {
+    double u_abs = x_points[i] - x_position;
+    double v_abs = y_points[i] - y_position;
+    double u_rel = u_abs * cos(yaw) + v_abs * sin(yaw);
+    double v_rel = u_abs * (-sin(yaw)) + v_abs * cos(yaw);
+    x_points_ego.push_back(u_rel);
+    y_points_ego.push_back(v_rel);
+  }
+}
+
+
+// Find closest point on a path segment to a given reference position
+unsigned int find_closest_point_on_path(vector<double>& x_path, vector<double>& y_path, double x_ref, double y_ref) {
+  unsigned int idx_min_dist = 0;
+  double min_dist = DBL_MAX;
+  // Loop over all path segment points
+  for ( unsigned int idx=0; idx<x_path.size(); ++idx ) {
+    // Calculate the distance of the current point on the path segment to the reference point
+    double dist = distance_between_points(x_path[idx], y_path[idx], x_ref, y_ref);
+    if (dist < min_dist) {
+      // Update minimum distance (absolute value)
+      min_dist = dist;
+      // Update index of the waypoint closest to the reference point
+      idx_min_dist = idx;
+    }
+  }
+  return idx_min_dist;
+}
+
+
 int main ()
 {
+  // Start uWebSocket Server
   cout << "starting server" << endl;
   uWS::Hub h;
 
-  double new_delta_time;
+  // Init simulation step counter
   int i = 0;
 
+  // Create log files to save the pid_controller values
   fstream file_steer;
   file_steer.open("steer_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
   file_steer.close();
@@ -220,362 +287,487 @@ int main ()
   file_throttle.open("throttle_pid_data.txt", std::ofstream::out | std::ofstream::trunc);
   file_throttle.close();
 
+  // Define timer
   time_t prev_timer;
   time_t timer;
   time(&prev_timer);
 
+  // Define delta time
+  double new_delta_time;
+
   /**
-  * Step 1: Create and initialize lateral controller (steering controller)
-  **/  
-  // Create PID controller instance for lateral control based on crosstrack error only
+  * (Step 1): Create PID (pid_steer) steer controller for longitudinal motion control
+  **/
   PID pid_steer = PID();
-  // Initialize lateral PID controller
-  double FF_steer = 0.0;
-  double Kp_steer = 0.3; // 2.1; // 0.3;
-  double Ki_steer = 0.001; // 0.01;
-  double Kd_steer = 0.1; // 0.3;
+  // Set PID steer control parameters
+  double Kp_steer = 0.16; // 0.18; // 0.21; // 0.3;
+  double Ki_steer = 0.0; // 0.0001; // 0.001; // 0.01;
+  double Kd_steer = 0.0; // 0.28; // 0.1; // 0.3; // 0.6;
   double output_lim_min_steer = -1.2;
   double output_lim_max_steer = 1.2;
-  double int_errot_0_steer = 0.0;
-  pid_steer.Init(FF_steer, Kp_steer, Ki_steer, Kd_steer, output_lim_max_steer, output_lim_min_steer, int_errot_0_steer);
+  double delta_t_min_steer = 1.0e-3;
+  double initial_steer_error = 0.0;
+  // Initialize PID steer controller for lateral motion control
+  pid_steer.Init(
+    Kp_steer,
+    Ki_steer,
+    Kd_steer,
+    output_lim_min_steer,
+    output_lim_max_steer,
+    delta_t_min_steer,
+    initial_steer_error
+  );
 
-  // Create Stanley controller instance as alternative for lateral control based on both crosstrack and heading error
+  // Create additional Stanley steering controller for testing purpose
   STANLEY stanley_steer = STANLEY();
-  // Initialize lateral Stanley controller
-  double K_crosstrack = 1.0;
-  double velocity_threshold = 1e-3;
-  stanley_steer.Init(K_crosstrack, velocity_threshold, output_lim_max_steer, output_lim_min_steer);
+  // Set STANLEY steer control parameters
+  double K_cte_stanley = 0.1; 
+  double output_lim_min_stanley = -1.2;
+  double output_lim_max_stanley = 1.2;
+  double velocity_threshold_stanley = 1.0e-3;
+  // Initialize Stanley steer controller for lateral motion control
+  stanley_steer.Init(
+    K_cte_stanley,
+    output_lim_min_stanley,
+    output_lim_max_stanley,
+    velocity_threshold_stanley
+  );
 
   /**
-  * Step 1: create pid (pid_throttle) for throttle command and initialize values
+  * (Step 1): Create PID (pid_throttle) for throttle control command and initialize values
   **/
-  // Create longitudinal PID controller
   PID pid_throttle = PID();
-  // Initialize longitudinal PID controller
-  double FF_throttle = 0.0; // 0.0;
-  double Kp_throttle = 0.2; // 0.5; // 0.3 // 0.25;
-  double Ki_throttle = 0.02; // 0.001; // 0.0009;
-  double Kd_throttle = 0.08; // 0.0; // 0.1;
+  // Set PID throttle control parameters
+  double Kp_throttle = 0.17; // 0.5; // 0.3 // 0.25;
+  double Ki_throttle = 0.004; // 0.02; // 0.001; // 0.0009;
+  double Kd_throttle = 0.0; // 0.08; // 0.0; // 0.1;
   double output_lim_min_throttle = -1.0;
   double output_lim_max_throttle = 1.0;
-  double int_error_0_throttle = 0.0;
-  pid_throttle.Init(FF_throttle, Kp_throttle, Ki_throttle, Kd_throttle, output_lim_max_throttle, output_lim_min_throttle, int_error_0_throttle);
+  double delta_t_min_throttle = 1e-3;
+  double intial_throttle_error = 0.0;
+  // Initialize PID throttle controller for longitudinal motion control
+  pid_throttle.Init(
+    Kp_throttle,
+    Ki_throttle,
+    Kd_throttle,
+    output_lim_min_throttle,
+    output_lim_max_throttle,
+    delta_t_min_throttle,
+    intial_throttle_error
+  );
 
   // Execute control cycle on receiving a new message from SimulationAPI
-  h.onMessage([&pid_steer, &stanley_steer, &pid_throttle, &new_delta_time, &timer, &prev_timer, &i, &prev_timer](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
-  {
-        // Check if current message has data
-        auto s = hasData(data);
+  h.onMessage(
+    [&pid_steer, &pid_throttle, &stanley_steer, &new_delta_time, &timer, &prev_timer, &i, &prev_timer]
+    (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
-        if (s != "") {
+      // Check if current message has data
+      auto s = hasData(data);
 
-          // Parse data from current message
-          auto data = json::parse(s);
+      if ( s != "" ) {
 
-          // Create file to save values
-          fstream file_steer;
-          file_steer.open("steer_pid_data.txt");
-          fstream file_throttle;
-          file_throttle.open("throttle_pid_data.txt");
+        // Parse data from current message
+        auto data = json::parse(s);
 
-          // Planned trajectory points (interpolated waypoints)
-          vector<double> x_points = data["traj_x"];
-          vector<double> y_points = data["traj_y"];
-          vector<double> v_points = data["traj_v"];
-          // Actual yaw angle of the ego vehicle pose
-          double yaw = data["yaw"];
-          // Actual velocity of the ego vehicle
-          double velocity = data["velocity"];
-          // Simulation time
-          double sim_time = data["time"];
-          // Planned waypoints
-          double waypoint_x = data["waypoint_x"];
-          double waypoint_y = data["waypoint_y"];
-          double waypoint_t = data["waypoint_t"];
-          bool is_junction = data["waypoint_j"];
-          // Traffic light state
-          string tl_state = data["tl_state"];
-          // Actual position of the ego vehicle (center point)
-          double x_position = data["location_x"];
-          double y_position = data["location_y"];
-          double z_position = data["location_z"];
+        // Open log files to save the pid_controller values
+        fstream file_steer;
+        file_steer.open("steer_pid_data.txt");
+        fstream file_throttle;
+        file_throttle.open("throttle_pid_data.txt");
+        // Open additional log file to save standley_controller values (for testing purpose)
+        fstream file_steer_stanley;
+        file_steer_stanley.open("steer_stanley_data.txt");
 
-          // Actual position of the ego vehicle's front axle (center point)
-          double x_position_front = data["front_location_x"];
-          double y_position_front = data["front_location_y"];
+        // Planned trajectory points (interpolated waypoints)
+        vector<double> x_points = data["traj_x"];
+        vector<double> y_points = data["traj_y"];
+        vector<double> v_points = data["traj_v"];
+        // Previous yaw angle of the ego vehicle
+        double yaw = data["yaw"];
+        // Actual velocity of the ego vehicle
+        double velocity = data["velocity"];
+        // Actual simulation time
+        double sim_time = data["time"];
+        // Next planned waypoint
+        double waypoint_x = data["waypoint_x"];
+        double waypoint_y = data["waypoint_y"];
+        double waypoint_t = data["waypoint_t"];
+        // Flag to mark junctions on the planned path
+        bool is_junction = data["waypoint_j"];
+        // Traffic light state
+        string tl_state = data["tl_state"];
+        // Actual position of the ego vehicle (center point)
+        double x_position = data["location_x"];
+        double y_position = data["location_y"];
+        double z_position = data["location_z"];
 
-          // Double check distance from vehicle center to front axle (must be constant)
-          double wheel_base = sqrt(
-            // pow(x_points[idx] - x_position_front, 2) + pow(y_points[idx] - y_position_front, 2)
-            pow(x_position_front - x_position, 2) + pow(y_position_front - y_position, 2)
-          );
+        // Obstacle positions 
+        if ( !have_obst ) {
+          vector<double> x_obst = data["obst_x"];
+          vector<double> y_obst = data["obst_y"];
+          set_obst(x_obst, y_obst, obstacles, have_obst);
+        }
 
-          // Define a lookahead index on the planned trajectory as reference for lont./lat. control
-          unsigned int idx_lookahead = x_points.size()-1;
+        // Set goal state based on the next planned waypoint
+        State goal;
+        goal.location.x = waypoint_x;
+        goal.location.y = waypoint_y;
+        goal.rotation.yaw = waypoint_t;
 
-          // Obstacle positions 
-          if (!have_obst) {
-          	vector<double> x_obst = data["obst_x"];
-          	vector<double> y_obst = data["obst_y"];
-          	set_obst(x_obst, y_obst, obstacles, have_obst);
-          }
+        // Define vectors for the spiral trajectory variants to the next target waypoint
+        vector< vector<double> > spirals_x;
+        vector< vector<double> > spirals_y;
+        vector< vector<double> > spirals_v;
+        vector<int> best_spirals;
 
-          // Goal states derived from the planned waypoints
-          State goal;
-          goal.location.x = waypoint_x;
-          goal.location.y = waypoint_y;
-          goal.rotation.yaw = waypoint_t;
+        // Plan next path segment using spiral interpolation to the next target waypoint
+        path_planner(
+          x_points, y_points, v_points,
+          x_position, y_position, yaw, velocity,
+          goal, is_junction, tl_state,
+          spirals_x, spirals_y, spirals_v, best_spirals
+        );
 
-          // Define vectors for spline interpolation of the planned trajectory given by the waypoints
-          vector< vector<double> > spirals_x;
-          vector< vector<double> > spirals_y;
-          vector< vector<double> > spirals_v;
-          vector<int> best_spirals;
+        // Define vectors for path segment transformed into ego vehicle coordinates
+        vector<double> x_points_ego;
+        vector<double> y_points_ego;
 
-          // Path planning using spiral interpolation of the planned waypoints
-          path_planner(x_points, y_points, v_points, yaw, velocity, goal, is_junction, tl_state, spirals_x, spirals_y, spirals_v, best_spirals);
+        // Convert the planned path segment into ego vehicle coordinates
+        transform_path_to_ego_coordinates(x_points_ego, y_points_ego, x_points, y_points, x_position, y_position, yaw);
 
-          // Save time and compute delta time
-          time(&timer);
-          new_delta_time = difftime(timer, prev_timer);
-          prev_timer = timer;
+        // Save time and compute delta time
+        time(&timer);
+        new_delta_time = difftime(timer, prev_timer);
+        prev_timer = timer;
 
-          //////////////////////////////////////////
-          // Lateral control (steeroing control)
-          //////////////////////////////////////////
+        // Estimate wheelbase of the ego vehicle (distance between front and rear axle) in [m]
+        double wheelbase = 4.0;
 
-          // Choose between PID (default: USE_PID = true) and Stanley lateral control (alternative)
-          bool USE_PID_LAT = true;
+        // Find closest waypoint on the planned path segment in driving direction (using ego vehicle coordinates)
+        //unsigned int closest_wp_idx = find_closest_point_on_path(x_points_ego, y_points_ego, 0.0, 0.0);
+        unsigned int closest_wp_idx = find_closest_point_on_path(x_points_ego, y_points_ego, wheelbase/2.0, 0.0);
 
-          /**
-          * Step 2: Compute crosstrack_error and headding_error from desired trajectory and the current ego vehicle pose
+        // Calculate distance to the closest point on the planned path segment
+        double dist_closest_wp = distance_between_points(
+          x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
+        );
+
+        // Define lookahead waypoint on the planned trajectory to get setpoints for lateral and longitudinal control
+        unsigned int lookahead_wp_idx = x_points_ego.size() - 1;
+        if (closest_wp_idx + 2 < x_points_ego.size()) {
+          unsigned int lookahead_wp_idx = closest_wp_idx + 2;
+        }
+        
+        // Calculate distance to the lookahead waypoint on the planned path segment
+        double dist_lookahead_wp = distance_between_points(
+          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
+        );
+
+        ////////////////////////////////////////////////////
+        // Lateral motion control (steering control)
+        ////////////////////////////////////////////////////
+
+        /**
+          * Step 2: Get a desired heading from the current ego vehicle position towards the target waypoint on
+          *         the planned trajectory to calculte a new setpoint for steering control
           **/
-          // Update the delta time with the previous command
-          pid_steer.UpdateDeltaTime(new_delta_time);
+        // Calculate desired yaw angle from the current position to the closest waypoint on the planned trajectory
+        double yaw_closest_wp = angle_between_points(
+          x_position, y_position, x_points[closest_wp_idx], y_points[closest_wp_idx]
+        );
 
-          // Calculate center point of the front axle position
-          // double ego_wheel_base = 5.0267767906188965;
-          // double x_position_front = x_position + ego_wheel_base/2 * cos(yaw);
-          // double y_position_front = y_position + ego_wheel_base/2 * sin(yaw);
-          
-          // Find the point of the planned path segment closest to the front axle center position of the ego vehicle (player)
-          double crosstrack_error = 0;
-          double heading_error = 0;
-          double min_dist = DBL_MAX;  // Minimum distance of the planned path cto the ego vehicles front axle position
-          unsigned int idx_min_dist = 0;  // Index for cross-track-error calculation
-          for (unsigned int idx=0; idx<x_points.size()-1; ++idx) { // Leave out last element of the path segment from the search
-            // Calculate the distance of the current point on the planned path segment to the ego vehicle front axle position
-            double dist = sqrt(
-              // pow(x_points[idx] - x_position_front, 2) + pow(y_points[idx] - y_position_front, 2)
-              pow(x_points[idx] - x_position, 2) + pow(y_points[idx] - y_position, 2)
-            );
-            if (dist < min_dist) {
-              // Update minimum distance (absolute value)
-              min_dist = abs(dist);
-              // Update index of the waypoint closest to the current ego vehicle position
-              idx_min_dist = idx;
-            }
-          }
+        // Calculate heading error w.r.t. the closest waypoint on the planned trajectory
+        double heading_error_closest_wp = yaw_closest_wp - yaw;
 
-          // Calculate lookahead distance
-          double lookahead_dist = sqrt(
-            // pow(x_points[idx_lookahead] - x_position_front, 2) + pow(y_points[idx_lookahead] - y_position_front, 2)
-            pow(x_points[idx_lookahead] - x_position, 2) + pow(y_points[idx_lookahead] - y_position, 2)
-          );
+        // Calculate desired yaw angle from the current position to the lookahead waypoint on the planned trajectory
+        double yaw_lookahead_wp = angle_between_points(
+          x_position, y_position, x_points[lookahead_wp_idx], y_points[lookahead_wp_idx]
+        );
 
-          // Calculate crosstrack_error as the distance of the ego vehicle's front axle center position
-          // to the tangent through the closest point approximated and its successor on the planned
-          // trajectory segment.
-          // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-          // Ego vehicle front axle position is left of the path tangent => crosstrack_error < 0
-          // Ego vehicle front axle position is right of the path tangent => crosstrack_error > 0
-          // Ego vehicle front axcle position is on the path tangent => crosstrack_error == 0
-          crosstrack_error = (
-            (
-              // (x_points[idx_lookahead] - x_points[idx_lookahead-1]) * (y_points[idx_lookahead-1] - y_position_front) -
-              // (y_points[idx_lookahead] - y_points[idx_lookahead-1]) * (x_points[idx_lookahead-1] - x_position_front)
-              // (x_points[idx_lookahead] - x_points[idx_lookahead-1]) * (y_points[idx_lookahead-1] - y_position) -
-              // (y_points[idx_lookahead] - y_points[idx_lookahead-1]) * (x_points[idx_lookahead-1] - x_position)
-              (x_points[idx_min_dist+1] - x_points[idx_min_dist]) * (y_points[idx_min_dist] - y_position) -
-              (y_points[idx_min_dist+1] - y_points[idx_min_dist]) * (x_points[idx_min_dist] - x_position)
-              // (x_points[idx_min_dist+1] - x_points[idx_min_dist]) * (y_points[idx_min_dist] - y_position_front) -
-              // (y_points[idx_min_dist+1] - y_points[idx_min_dist]) * (x_points[idx_min_dist] - x_position_front)
-            ) / sqrt(
-              // pow(x_points[idx_lookahead] - x_points[idx_lookahead-1], 2) +
-              // pow(y_points[idx_lookahead] + y_points[idx_lookahead-1], 2)
-              pow(x_points[idx_min_dist+1] - x_points[idx_min_dist], 2) +
-              pow(y_points[idx_min_dist+1] + y_points[idx_min_dist], 2)
-            )
-          );
-          // Calculate yaw angle of the planned path segment at the waypoint closest to the current ego vehicle position
-          double yaw_path = angle_between_points(
-            // x_points[idx_min_dist], y_points[idx_min_dist], x_points[idx_min_dist+1], y_points[idx_min_dist+1]
-            x_points[idx_lookahead-1], y_points[idx_lookahead-1], x_points[idx_lookahead], y_points[idx_lookahead]
-            // x_position, y_position, x_points[idx_lookahead], y_points[idx_lookahead]
-            // x_position_front, y_position_front, x_points[idx_lookahead], y_points[idx_lookahead]            
-          );
-          
-          // Compute heading_error
-          heading_error = yaw_path - yaw;
+        // Calculate heading error w.r.t. the lookahead waypoint on the planned trajectory
+        double heading_error_lookahead_wp = yaw_lookahead_wp - yaw;
 
-          // Init steer correction output (considering both heading_error and crosstrack_error)
-          double steer_output;
+        // Get crosstrack error w.r.t. to the lookahed waypoint on the planned trajectory
+        double cte_lookahead_wp = y_points_ego[lookahead_wp_idx];
 
-          vector<double> pid_steer_errors;
+        // Get crosstrack error w.r.t. to the closest waypoint on the planned trajectory
+        double cte_closest_wp = y_points_ego[closest_wp_idx];
 
-          /**
-          * Step 3: Compute lateral control command
+        /**
+        * Step 3a): Update steering control given the current cross-track error / or heading error
+        **/
+        // Define vector to hold the pid steer control errors and error gains
+        vector<double> pid_steer_errors;
+        vector<double> pid_steer_error_gains;
+
+        // Define set point for steering control variable (select control variable)
+        //double steer_setpoint = yaw_lookahead_wp;
+        //double steer_setpoint = yaw_closest_wp;
+        //double steer_setpoint = cte_lookahead_wp;
+        double steer_setpoint = cte_closest_wp;
+
+        // Define actual steering control variable (select control variable)
+        double steer_act_value = 0;  // actual ego position is always zero in ego coordinates
+        //double steer_act_value = yaw;
+
+        // Update the delta time with the previous command
+        pid_steer.UpdateDeltaTime(new_delta_time);
+
+        // Compute PID steer control command to apply
+        pid_steer.Update(steer_setpoint, steer_act_value);
+
+        // Get PID steer control command
+        double steer_output = pid_steer.GetControlCommand();
+
+        // Get PID steer control errors and error gains
+        pid_steer_errors = pid_steer.GetErrors();
+        pid_steer_error_gains = pid_steer.GetErrorGains();
+
+        // Decompose pid steer error vector
+        double prop_steer_error = pid_steer_errors[0];
+        double int_steer_error = pid_steer_errors[1];
+        double diff_steer_error = pid_steer_errors[2];
+
+        // Decompose pid steer error gain vector
+        double prop_steer_error_gain = pid_steer_error_gains[0];
+        double int_steer_error_gain = pid_steer_error_gains[1];
+        double diff_steer_error_gain = pid_steer_error_gains[2];
+
+        // Save lateral control data
+        file_steer.seekg(std::ios::beg);
+        for (int j=0; j < i - 1; ++j) {
+          file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        file_steer << i ;
+        file_steer << " " << steer_setpoint;
+        file_steer << " " << steer_act_value;
+        file_steer << " " << prop_steer_error;
+        file_steer << " " << int_steer_error;
+        file_steer << " " << diff_steer_error;
+        file_steer << " " << prop_steer_error_gain;
+        file_steer << " " << int_steer_error_gain;
+        file_steer << " " << diff_steer_error_gain;
+        file_steer << " " << steer_output;
+        file_steer << " " << yaw_closest_wp;
+        file_steer << " " << yaw_lookahead_wp;
+        file_steer << " " << yaw;
+        file_steer << " " << heading_error_closest_wp;
+        file_steer << " " << heading_error_lookahead_wp;
+        file_steer << " " << cte_closest_wp;
+        file_steer << " " << cte_lookahead_wp;
+        file_steer << " " << x_position;
+        file_steer << " " << y_position;
+        file_steer << " " << x_points[closest_wp_idx];
+        file_steer << " " << y_points[closest_wp_idx];
+        file_steer << " " << x_points[lookahead_wp_idx];
+        file_steer << " " << y_points[lookahead_wp_idx];
+        file_steer << " " << dist_closest_wp;
+        file_steer << " " << dist_lookahead_wp << endl;
+
+        /**
+        * Step 3b): Update stanley steering control given the current heading and cross-track error
+        **/
+        // verwrite PID steer control command with Stanley steer control command
+        bool USE_STANLEY = false;
+
+        // Define vector to hold the stanley steer control errors and error gains
+        vector<double> stanley_steer_errors;
+        vector<double> stanley_steer_error_gains;
+
+        // Update Stanley steer control errors and control command output
+        double stanely_yaw_setpoint = yaw_closest_wp;
+        //double stanely_yaw_setpoint = yaw_lookahead_wp;
+        double stanley_actual_cte = cte_closest_wp;
+        //double stanley_actual_cte = cte_lookahead_wp;
+        stanley_steer.Update(stanely_yaw_setpoint, yaw, stanley_actual_cte, velocity);
+
+        // Get Stanley steer control command
+        double stanley_steer_output = stanley_steer.GetControlCommand();
+
+        // Get PID steer control errors and error gains
+        stanley_steer_errors = stanley_steer.GetErrors();
+        stanley_steer_error_gains = stanley_steer.GetErrorGains();
+
+        // Decompose stanley steer error vector
+        double stanley_heading_error = stanley_steer_errors[0];
+        double stanley_crosstrack_error = stanley_steer_errors[1];
+
+        // Decompose stanley steer error gain vector
+        double stanley_heading_error_gain = stanley_steer_error_gains[0];
+        double stanley_crosstrack_error_gain = stanley_steer_error_gains[1];
+
+        // Save lateral control data
+        file_steer_stanley.seekg(std::ios::beg);
+        for (int j=0; j < i - 1; ++j) {
+          file_steer_stanley.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        }
+        file_steer_stanley << i ;
+        file_steer_stanley << " " << stanely_yaw_setpoint;
+        file_steer_stanley << " " << yaw;
+        file_steer_stanley << " " << stanley_actual_cte;
+        file_steer_stanley << " " << velocity;
+        file_steer_stanley << " " << stanley_heading_error;
+        file_steer_stanley << " " << stanley_crosstrack_error;
+        file_steer_stanley << " " << stanley_heading_error_gain;
+        file_steer_stanley << " " << stanley_crosstrack_error_gain;
+        file_steer_stanley << " " << stanley_steer_output;
+        file_steer_stanley << " " << x_position;
+        file_steer_stanley << " " << y_position;
+        file_steer_stanley << " " << x_points[closest_wp_idx];
+        file_steer_stanley << " " << y_points[closest_wp_idx];
+        file_steer_stanley << " " << dist_closest_wp << endl;
+
+        // Overwrite PID steer command with Stanley control command
+        if (USE_STANLEY) {
+          steer_output = stanley_steer_output;
+        }
+        cout << "stanley_heading_error = " << stanley_heading_error << endl;
+        cout << "stanley_crosstrack_error = " << stanley_crosstrack_error << endl;
+        cout << "stanley_heading_error_gain = " << stanley_heading_error_gain << endl;
+        cout << "stanley_crosstrack_error_gain = " << stanley_crosstrack_error_gain << endl;
+        cout << "stanley_steer_output = " << stanley_steer_output << endl;
+        cout << "steer_output = " << steer_output << endl;
+
+
+        ////////////////////////////////////////////////////
+        // Longidudinal motion control (throttle control)
+        ////////////////////////////////////////////////////
+        /**
+          * Step 2: Get a desired velocity setpoint from the target waypoint on the planned trajectory
+          *         to calculte a new setpoint for throttle control
           **/
-          // Compute steer control command to apply
-          if (USE_PID_LAT) {
-            // Use PID controller
-            // pid_steer.UpdateError(crosstrack_error, 0.0);
-            pid_steer.UpdateError(heading_error, yaw_path);
-            steer_output = pid_steer.GetControlCommand();
-            // Get PID controller errors
-            pid_steer_errors = pid_steer.GetErrors();
-          } else {
-            // Use Stanley controller
-            steer_output = stanley_steer.GetSteerCommand(heading_error, crosstrack_error, velocity);
-          }
+        // Get the desired velocity at the closest waypoint on the planned trajectory
+        double velocity_closest_wp = v_points[closest_wp_idx];
 
-          // Save lateral control data
-          file_steer.seekg(std::ios::beg);
-          for (int j=0; j < i - 1; ++j) {
-              file_steer.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-          }
-          file_steer  << i ;
-          file_steer  << " " << heading_error;
-          file_steer  << " " << crosstrack_error;
-          //file_steer  << " " << steer_output << endl;
-          file_steer  << " " << steer_output;
-          if (USE_PID_LAT) {
-            file_steer  << " " << pid_steer_errors[1];
-            file_steer  << " " << pid_steer_errors[2];
-          }
-          file_steer  << " " << x_points[idx_lookahead];
-          file_steer  << " " << y_points[idx_lookahead];
-          file_steer  << " " << x_points[idx_min_dist];
-          file_steer  << " " << y_points[idx_min_dist];
-          file_steer  << " " << x_position;
-          file_steer  << " " << y_position;
-          file_steer  << " " << x_position_front;
-          file_steer  << " " << y_position_front;
-          file_steer  << " " << lookahead_dist;
-          file_steer  << " " << min_dist;
-          file_steer  << " " << yaw_path;
-          file_steer  << " " << yaw;
-          file_steer  << " " << wheel_base << endl;
-          file_throttle.seekg(std::ios::beg);
+        // Get the desired velocity at the lookahead waypoint on the planned trajectory
+        double velocity_lookahead_wp = v_points[lookahead_wp_idx];
 
-          //////////////////////////////////////////
-          // Longidudinal control (throttle control)
-          //////////////////////////////////////////
-          
-          /**
-          * Step 2: Compute velocity_error from desired velocity and actual velocity
-          **/
-          // Update the delta time with the previous command
-          pid_throttle.UpdateDeltaTime(new_delta_time);
+        /**
+        * Step 3): Update throttle control given the current velocity and the desired velocity on the planned trajectory
+        **/
+        // Define vector to hold the pid throttle control errors and error gains
+        vector<double> pid_throttle_errors;
+        vector<double> pid_throttle_error_gains;
 
-          // Compute velocity_error
-          // double velocity_error = v_points[idx_min_dist] - velocity;
-          double velocity_error = v_points[idx_lookahead] - velocity;
-          double throttle;
-          double throttle_output;
-          double brake_output;
-          vector<double> pid_throttle_errors;
+        // Define set point for velocity error calculation and throttle control input
+        //double velocity_setpoint = velocity_lookahead_wp;
+        double velocity_setpoint = velocity_closest_wp;
 
-          /**
-          * Step 3: Compute longitudinal control command
-          **/
-          // Compute longidudinal control command to apply
-          //pid_throttle.UpdateError(velocity_error, v_points[idx_min_dist]);
-          pid_throttle.UpdateError(velocity_error, v_points[idx_lookahead]);
-          throttle = pid_throttle.GetControlCommand();
-          // Get PID controller errors
-          pid_throttle_errors = pid_throttle.GetErrors();
+        // Update the delta time with the previous command
+        pid_throttle.UpdateDeltaTime(new_delta_time);
 
-          // Adapt the negative throttle to break
-          if (throttle > 0.0) {
-            throttle_output = throttle;
-            brake_output = 0;
-          } else {
-            throttle_output = 0;
-            brake_output = -throttle;
-          }
+        // Compute throttle control command to apply
+        pid_throttle.Update(velocity_setpoint, velocity);
 
-          // Save longitudinal control data
-          file_throttle.seekg(std::ios::beg);
-          for (int j=0; j < i - 1; ++j) {
-              file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-          }
-          file_throttle  << i ;
-          file_throttle  << " " << velocity_error;
-          file_throttle  << " " << throttle_output;
-          // file_throttle  << " " << brake_output << endl;
-          file_throttle  << " " << brake_output;
-          file_throttle  << " " << pid_throttle_errors[1];
-          file_throttle  << " " << pid_throttle_errors[2];
-          file_throttle  << " " << v_points[idx_lookahead];
-          file_throttle  << " " << v_points[idx_min_dist];
-          file_throttle  << " " << velocity << endl;
+        // Get PID throttle control command
+        double throttle_ctrl_cmd = pid_throttle.GetControlCommand();
 
-          // Send control signal
-          json msgJson;
-          msgJson["brake"] = brake_output;
-          msgJson["throttle"] = throttle_output;
-          msgJson["steer"] = steer_output;
+        // Get PID throttle control errors and error gains
+        pid_throttle_errors = pid_throttle.GetErrors();
+        pid_throttle_error_gains = pid_throttle.GetErrorGains();
 
-          // Sent planned path and maneuver data
-          msgJson["trajectory_x"] = x_points;
-          msgJson["trajectory_y"] = y_points;
-          msgJson["trajectory_v"] = v_points;
-          msgJson["spirals_x"] = spirals_x;
-          msgJson["spirals_y"] = spirals_y;
-          msgJson["spirals_v"] = spirals_v;
-          msgJson["spiral_idx"] = best_spirals;
-          msgJson["active_maneuver"] = behavior_planner.get_active_maneuver();
+        // Decompose pid throttle error vector
+        double prop_velocity_error = pid_throttle_errors[0];
+        double int_velocity_error = pid_throttle_errors[1];
+        double diff_velocity_error = pid_throttle_errors[2];
 
-          // Minimum point threshold before doing the update
-          // for high update rate use 19 for slow update rate use 4
-          msgJson["update_point_thresh"] = 16;
+        // Decompose pid throttle error gain vector
+        double prop_throttle_error_gain = pid_throttle_error_gains[0];
+        double int_throttle_error_gain = pid_throttle_error_gains[1];
+        double diff_throttle_error_gain = pid_throttle_error_gains[2];
 
-          auto msg = msgJson.dump();
+        // Define throttle and brake control commands
+        double throttle_output, brake_output;
 
-          i = i + 1;
-          file_steer.close();
-          file_throttle.close();
+        // Adapt the negative throttle to break
+        if (throttle_ctrl_cmd > 0.0) {
+          throttle_output = throttle_ctrl_cmd;
+          brake_output = 0;
+        } else {
+          throttle_output = 0;
+          brake_output = -throttle_ctrl_cmd;
+        }
 
-      ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+        // Save longitudinal control data
+        file_throttle.seekg(std::ios::beg);
+        for (int j=0; j < i - 1; ++j) {
+          file_throttle.ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+        }
+        file_throttle << i ;
+        file_throttle << " " << velocity_setpoint;
+        file_throttle << " " << velocity;
+        file_throttle << " " << prop_velocity_error;
+        file_throttle << " " << int_velocity_error;
+        file_throttle << " " << diff_velocity_error;
+        file_throttle << " " << prop_throttle_error_gain;
+        file_throttle << " " << int_throttle_error_gain;
+        file_throttle << " " << diff_throttle_error_gain;
+        file_throttle << " " << throttle_ctrl_cmd;
+        file_throttle << " " << throttle_output;
+        file_throttle << " " << brake_output;
+        file_throttle << " " << velocity_closest_wp;
+        file_throttle << " " << velocity_lookahead_wp << endl;
 
+        // Initialize json message
+        json msgJson;
+
+        // Send control signal
+        msgJson["brake"] = brake_output;
+        msgJson["throttle"] = throttle_output;
+        msgJson["steer"] = steer_output;
+
+        // Sent planned path and maneuver data
+        msgJson["trajectory_x"] = x_points;
+        msgJson["trajectory_y"] = y_points;
+        msgJson["trajectory_v"] = v_points;
+        msgJson["spirals_x"] = spirals_x;
+        msgJson["spirals_y"] = spirals_y;
+        msgJson["spirals_v"] = spirals_v;
+        msgJson["spiral_idx"] = best_spirals;
+        msgJson["active_maneuver"] = behavior_planner.get_active_maneuver();
+
+        //  min point threshold before doing the update
+        // for high update rate use 19 for slow update rate use 4
+        msgJson["update_point_thresh"] = 16;
+
+        // Dump json message containing the updated data from pid_controller
+        auto msg = msgJson.dump();
+
+        // Increment simulation time step
+        i = i + 1;
+
+        // Close log files with the pid_controller data
+        file_steer.close();
+        file_throttle.close();
+        file_steer_stanley.close();
+
+        // Send data back to simulatiorAPI
+        ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
+      }
     }
+  );
 
-  });
 
-
-  h.onConnection([](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req)
-  {
+  h.onConnection([](uWS::WebSocket<uWS::SERVER> ws, uWS::HttpRequest req) {
       cout << "Connected!!!" << endl;
-    });
+    }
+  );
 
 
-  h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length)
-    {
+  h.onDisconnection([&h](uWS::WebSocket<uWS::SERVER> ws, int code, char *message, size_t length) {
       ws.close();
       cout << "Disconnected" << endl;
-    });
+    }
+  );
 
   int port = 4567;
-  if (h.listen("0.0.0.0", port))
-    {
-      cout << "Listening to port " << port << endl;
-      h.run();
-    }
-  else
-    {
-      cerr << "Failed to listen to port" << endl;
-      return -1;
-    }
+  if ( h.listen("0.0.0.0", port) ) {
+    cout << "Listening to port " << port << endl;
+    h.run();
+  } else {
+    cerr << "Failed to listen to port" << endl;
+    return -1;
+  }
 
 }

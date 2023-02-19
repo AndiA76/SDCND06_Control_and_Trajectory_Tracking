@@ -15,7 +15,7 @@ STANLEY::STANLEY() {}
 
 STANLEY::~STANLEY() {}
 
-void STANLEY::Init(double crosstrack_gain, double velocity_threshold, double output_lim_max, double output_lim_min) {
+void STANLEY::Init(double crosstrack_gain, double output_lim_min, double output_lim_max, double velocity_threshold) {
    /**
    * Initialize Stanley control paramters
    **/
@@ -28,28 +28,50 @@ void STANLEY::Init(double crosstrack_gain, double velocity_threshold, double out
    output_lim_max_ = output_lim_max;
 }
 
-double STANLEY::GetSteerCommand(double heading_error, double crosstrack_error, double velocity) {
+void STANLEY::Update(double heading_setpoint, double actual_heading, double crosstrack_error, double velocity) {
    /**
-   * Get Stanley control steering command based on mixed heading error and crosstrack error.
+   * Update Stanley steering control errors and control command given heading setpoint, actual heading, actual cross-track error and velocity.
    **/
 
-   // Calculate crosstrack steering command component
-   double crosstrack_steer = atan(crosstrack_gain_ * crosstrack_error / (velocity + velocity_threshold_));
+   // Calculate current heading error
+   heading_error_ = heading_setpoint - actual_heading;
 
-   // Remark: Heading steering command component is equal to heading error
+   // Store current cross-track error
+   crosstrack_error_ = crosstrack_error;
+
+   // Transform crosstrack error into a heading error component
+   crosstrack_heading_error_ = atan(crosstrack_gain_ * crosstrack_error_ / (velocity + velocity_threshold_));
 
    // Calculate Stanley control command
-   double steer_control_output = heading_error + crosstrack_steer;
+   control_output_ = heading_error_ + crosstrack_heading_error_;
 
-   // Limit control output to its saturation limits
-   if (steer_control_output < output_lim_min_) {
-      // Set control output to its lower limit
-      steer_control_output = output_lim_min_;
-   } else if (steer_control_output > output_lim_max_) {
-      // Set control output to its upper limit
-      steer_control_output = output_lim_max_;
+   // Limit control output to its lower and upper saturation limits
+   if (control_output_ < output_lim_min_) {
+      control_output_ = output_lim_min_;
+   } else if (control_output_ > output_lim_max_) {
+      control_output_ = output_lim_max_;
    }
+}
 
-   // Return steer control comman
-   return steer_control_output;
+double STANLEY::GetControlCommand() {
+   /**
+   * Get the Stanley steering control command bound to the interval [output_lim_min_, output_lim_max_]
+   */
+   return control_output_;
+}
+
+vector<double> STANLEY::GetErrorGains() {
+   /**
+   * Get the STANLEY steering control error gains as a vector<double> = {heading_error_, crosstrack_heading_error_}
+   */
+   vector<double> output_errors_gains_ = {heading_error_, crosstrack_heading_error_};
+   return output_errors_gains_;
+}
+
+vector<double> STANLEY::GetErrors() {
+   /**
+   * Get the STANLEY control errors as a vector<double> = {heading_error_, crosstrack_error_}
+   */
+   vector<double> output_errors_ = {heading_error_, crosstrack_error_};
+   return output_errors_;
 }
